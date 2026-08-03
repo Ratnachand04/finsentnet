@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FINSENT — DEV TASK INTELLIGENCE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap');
+:root{--bg:#050d1a;--bg2:#0a1628;--bg3:#0d1f3c;--cyan:#00e5ff;--cyan2:#00b4cc;--cyan3:#006d82;--yellow:#ffe000;--green:#00ff88;--green2:#00cc6a;--red:#ff3366;--orange:#ff8c00;--purple:#9b59ff;--text:#c8e6f0;--muted:#4a7a8a;--border:rgba(0,229,255,0.12);--border2:rgba(0,229,255,0.25);--glow-cyan:0 0 20px rgba(0,229,255,0.3);--glow-yellow:0 0 20px rgba(255,224,0,0.3);--glow-green:0 0 20px rgba(0,255,136,0.3)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Rajdhani',sans-serif;font-size:15px;min-height:100vh;overflow-x:hidden}
+canvas#particles{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.ticker-wrap{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(5,13,26,0.95);border-bottom:1px solid var(--border2);height:28px;overflow:hidden}
+.ticker-track{display:flex;align-items:center;gap:40px;white-space:nowrap;animation:tickerScroll 40s linear infinite;height:28px;padding:0 20px}
+.ticker-item{font-family:'Share Tech Mono',monospace;font-size:11px;display:flex;align-items:center;gap:6px}
+.ticker-sym{color:var(--cyan);font-weight:700}.ticker-val{color:var(--text)}.ticker-up{color:var(--green)}.ticker-dn{color:var(--red)}
+@keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.app{position:relative;z-index:1;max-width:1140px;margin:0 auto;padding:46px 20px 60px}
+.header{text-align:center;margin-bottom:32px}
+.logo-text{font-family:'Orbitron',monospace;font-size:36px;font-weight:900;letter-spacing:8px;color:var(--cyan);text-shadow:0 0 30px rgba(0,229,255,0.6),0 0 60px rgba(0,229,255,0.2);line-height:1}
+.logo-sub{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:6px;color:var(--yellow);margin-top:4px;text-shadow:var(--glow-yellow)}
+.header-tag{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted);margin-top:8px;letter-spacing:2px}
+.stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:11px 14px;text-align:center}
+.stat-label{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:4px}
+.stat-val{font-family:'Orbitron',monospace;font-size:22px;font-weight:700}
+.sv-total{color:var(--cyan);text-shadow:var(--glow-cyan)}.sv-doing{color:var(--yellow);text-shadow:var(--glow-yellow)}.sv-done{color:var(--green);text-shadow:var(--glow-green)}.sv-pushed{color:var(--purple)}
+.progress-section{margin-bottom:18px}
+.progress-header{display:flex;justify-content:space-between;margin-bottom:6px}
+.progress-label{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted)}
+.progress-pct{font-family:'Orbitron',monospace;font-size:11px;color:var(--cyan)}
+.progress-track{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--cyan3),var(--cyan));border-radius:2px;transition:width .4s ease;box-shadow:0 0 8px rgba(0,229,255,0.4)}
+.phase-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin-bottom:20px}
+.phase-pip{background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:7px 4px;text-align:center;cursor:pointer;transition:all .15s}
+.phase-pip:hover,.phase-pip.active{border-color:var(--cyan);background:rgba(0,229,255,0.06)}
+.pip-label{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--muted);display:block;margin-bottom:2px}
+.pip-progress{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--cyan3);display:block}
+.phase-pip.active .pip-label,.phase-pip.active .pip-progress{color:var(--cyan)}
+.add-panel{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:16px;margin-bottom:20px}
+.add-row{display:flex;gap:8px;align-items:stretch}
+.task-input{flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:11px 14px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:500;outline:none;transition:border-color .2s,box-shadow .2s;letter-spacing:.3px}
+.task-input::placeholder{color:var(--muted)}.task-input:focus{border-color:var(--cyan);box-shadow:var(--glow-cyan)}
+.sel{background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:0 10px;color:var(--cyan);font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;outline:none;cursor:pointer}
+.sel option{background:var(--bg2);color:var(--text)}
+.add-btn{background:var(--cyan);color:var(--bg);border:none;border-radius:6px;padding:0 20px;font-family:'Orbitron',monospace;font-size:10px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:background .15s,box-shadow .15s,transform .1s;white-space:nowrap}
+.add-btn:hover{background:#33ecff;box-shadow:var(--glow-cyan);transform:translateY(-1px)}.add-btn:active{transform:translateY(0)}
+.filter-bar{display:flex;align-items:center;gap:7px;margin-bottom:13px;flex-wrap:wrap}
+.filter-label{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-right:3px}
+.fbtn{background:transparent;border:1px solid var(--border);border-radius:4px;padding:4px 11px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1.5px;color:var(--muted);cursor:pointer;transition:all .15s}
+.fbtn:hover,.fbtn.active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,0.06)}
+.fbtn.fd.active{border-color:var(--yellow);color:var(--yellow);background:rgba(255,224,0,0.06)}
+.fbtn.fn.active{border-color:var(--green);color:var(--green);background:rgba(0,255,136,0.06)}
+.fbtn.fp.active{border-color:var(--purple);color:var(--purple);background:rgba(155,89,255,0.06)}
+.sort-wrap{margin-left:auto;display:flex;align-items:center;gap:7px}
+.sort-select{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:4px 9px;color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:10px;outline:none;cursor:pointer}
+.sort-select option{background:var(--bg2)}
+.section-header{display:flex;align-items:center;gap:10px;margin-bottom:9px;padding:0 2px}
+.section-title{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:3px;color:var(--muted)}
+.section-line{flex:1;height:1px;background:var(--border)}
+.section-count{font-family:'Orbitron',monospace;font-size:10px;color:var(--muted)}
+.task-list{display:flex;flex-direction:column;gap:6px}
+.task-item{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:11px 13px;display:flex;align-items:center;gap:11px;transition:border-color .2s,background .2s,transform .15s;animation:slideIn .2s ease-out;position:relative;overflow:hidden}
+.task-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:7px 0 0 7px}
+.task-item:hover{transform:translateX(3px)}
+.task-item.s-todo{border-color:rgba(0,229,255,0.15)}.task-item.s-todo::before{background:var(--cyan3)}.task-item.s-todo:hover{border-color:var(--border2)}
+.task-item.s-doing{border-color:rgba(255,224,0,0.2);background:rgba(255,224,0,0.015)}.task-item.s-doing::before{background:var(--yellow);box-shadow:0 0 7px var(--yellow)}
+.task-item.s-done{border-color:rgba(0,255,136,0.15)}.task-item.s-done::before{background:var(--green2)}
+.task-item.s-pushed{border-color:rgba(155,89,255,0.2)}.task-item.s-pushed::before{background:var(--purple);box-shadow:0 0 7px var(--purple)}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.task-idx{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);min-width:22px;text-align:right}
+.task-pb{font-family:'Share Tech Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;white-space:nowrap;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.15);color:var(--cyan3)}
+.task-text{flex:1;font-size:14px;font-weight:500;letter-spacing:.2px;color:var(--text);line-height:1.4;word-break:break-word;cursor:pointer}
+.task-item.s-done .task-text,.task-item.s-pushed .task-text{text-decoration:line-through;color:var(--muted)}
+.ttag{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1.5px;padding:2px 7px;border-radius:3px;white-space:nowrap}
+.tg-feature{background:rgba(0,229,255,0.1);color:var(--cyan);border:1px solid rgba(0,229,255,0.2)}
+.tg-bug{background:rgba(255,51,102,0.1);color:var(--red);border:1px solid rgba(255,51,102,0.2)}
+.tg-chore{background:rgba(74,122,138,0.1);color:var(--muted);border:1px solid rgba(74,122,138,0.2)}
+.tg-model{background:rgba(155,89,255,0.1);color:var(--purple);border:1px solid rgba(155,89,255,0.2)}
+.tg-data{background:rgba(255,140,0,0.1);color:var(--orange);border:1px solid rgba(255,140,0,0.2)}
+.tg-rust{background:rgba(255,126,41,0.08);color:#ff7e29;border:1px solid rgba(255,140,0,0.2)}
+.tg-deploy{background:rgba(0,255,136,0.08);color:var(--green);border:1px solid rgba(0,255,136,0.2)}
+.task-time{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);white-space:nowrap}
+.task-actions{display:flex;gap:4px;align-items:center}
+.abtn{background:transparent;border:1px solid var(--border);border-radius:4px;height:25px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;transition:all .15s;color:var(--muted);padding:0 7px}
+.abtn:hover{border-color:var(--border2);color:var(--text)}
+.abtn.cycle{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.5px}
+.ab-doing{border-color:rgba(255,224,0,0.3);color:var(--yellow)}.ab-doing:hover{background:rgba(255,224,0,0.1);border-color:var(--yellow);box-shadow:var(--glow-yellow)}
+.ab-done{border-color:rgba(0,255,136,0.3);color:var(--green)}.ab-done:hover{background:rgba(0,255,136,0.1);border-color:var(--green)}
+.ab-pushed{border-color:rgba(155,89,255,0.3);color:var(--purple)}.ab-pushed:hover{background:rgba(155,89,255,0.1);border-color:var(--purple)}
+.ab-todo{border-color:rgba(0,229,255,0.3);color:var(--cyan)}.ab-todo:hover{background:rgba(0,229,255,0.1);border-color:var(--cyan)}
+.ab-del{border-color:rgba(255,51,102,0.2);color:rgba(255,51,102,0.4)}.ab-del:hover{background:rgba(255,51,102,0.1);border-color:var(--red);color:var(--red)}
+.sbadge{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1.5px;padding:2px 8px;border-radius:3px;white-space:nowrap}
+.sb-todo{background:rgba(0,229,255,0.07);color:var(--cyan3);border:1px solid var(--border)}
+.sb-doing{background:rgba(255,224,0,0.1);color:var(--yellow);border:1px solid rgba(255,224,0,0.3);animation:pulseY 2s ease-in-out infinite}
+.sb-done{background:rgba(0,255,136,0.07);color:var(--green2);border:1px solid rgba(0,255,136,0.2)}
+.sb-pushed{background:rgba(155,89,255,0.1);color:var(--purple);border:1px solid rgba(155,89,255,0.3)}
+@keyframes pulseY{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px rgba(255,224,0,0.35)}}
+.empty-state{text-align:center;padding:55px 20px;color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:2px;border:1px dashed var(--border);border-radius:8px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(5,13,26,0.85);backdrop-filter:blur(4px);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:24px;width:90%;max-width:530px;box-shadow:0 0 60px rgba(0,229,255,0.1);animation:modalIn .2s ease-out}
+@keyframes modalIn{from{opacity:0;transform:scale(.95) translateY(-10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-title{font-family:'Orbitron',monospace;font-size:12px;letter-spacing:3px;color:var(--cyan);margin-bottom:14px}
+.modal-input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:11px 13px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:500;outline:none;margin-bottom:12px;resize:vertical;min-height:75px}
+.modal-input:focus{border-color:var(--cyan);box-shadow:var(--glow-cyan)}
+.modal-row{display:flex;gap:8px;margin-bottom:14px}
+.msel{flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:9px 11px;color:var(--cyan);font-family:'Share Tech Mono',monospace;font-size:10px;outline:none}
+.msel option{background:var(--bg2);color:var(--text)}
+.modal-btns{display:flex;gap:9px;justify-content:flex-end}
+.modal-save{background:var(--cyan);color:var(--bg);border:none;border-radius:6px;padding:9px 22px;font-family:'Orbitron',monospace;font-size:10px;font-weight:700;letter-spacing:2px;cursor:pointer;transition:background .15s,box-shadow .15s}
+.modal-save:hover{background:#33ecff;box-shadow:var(--glow-cyan)}
+.modal-cancel{background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:9px 18px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;transition:all .15s}
+.modal-cancel:hover{border-color:var(--red);color:var(--red)}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--cyan3);border-radius:2px}
+.footer-bar{display:flex;align-items:center;justify-content:space-between;margin-top:22px;padding-top:14px;border-top:1px solid var(--border)}
+.footer-info{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px}
+.clear-btn{background:transparent;border:1px solid rgba(255,51,102,0.3);color:rgba(255,51,102,0.6);border-radius:4px;padding:5px 14px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;transition:all .15s}
+.clear-btn:hover{border-color:var(--red);color:var(--red);background:rgba(255,51,102,0.06)}
+[data-tip]{position:relative}
+[data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);background:var(--bg3);border:1px solid var(--border2);color:var(--cyan);font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;padding:3px 7px;border-radius:4px;white-space:nowrap;z-index:50;pointer-events:none}
+</style>
+</head>
+<body>
+<canvas id="particles"></canvas>
+<div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
+
+<div class="app">
+  <div class="header">
+    <div class="logo-text">FINSENT</div>
+    <div class="logo-sub">NET &nbsp;&nbsp; PRO</div>
+    <div class="header-tag">// DEV TASK INTELLIGENCE — 26-MONTH SOLO BUILD MASTER PLAN</div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-card"><div class="stat-label">TOTAL TASKS</div><div class="stat-val sv-total" id="sTotal">0</div></div>
+    <div class="stat-card"><div class="stat-label">IN PROGRESS</div><div class="stat-val sv-doing" id="sDoing">0</div></div>
+    <div class="stat-card"><div class="stat-label">COMPLETED</div><div class="stat-val sv-done" id="sDone">0</div></div>
+    <div class="stat-card"><div class="stat-label">GIT PUSHED</div><div class="stat-val sv-pushed" id="sPushed">0</div></div>
+  </div>
+
+  <div class="progress-section">
+    <div class="progress-header">
+      <span class="progress-label">OVERALL BUILD COMPLETION</span>
+      <span class="progress-pct" id="progPct">0%</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  </div>
+
+  <div class="phase-grid" id="phaseNav"></div>
+
+  <div class="add-panel">
+    <div class="add-row">
+      <input class="task-input" id="taskInput" type="text" placeholder="Add custom task..." autocomplete="off"/>
+      <select class="sel" id="tagSel">
+        <option value="rust">RUST</option><option value="model">MODEL</option><option value="data">DATA</option>
+        <option value="feature">FEATURE</option><option value="deploy">DEPLOY</option><option value="chore">CHORE</option><option value="bug">BUG</option>
+      </select>
+      <select class="sel" id="phaseSel">
+        <option value="P1">P1</option><option value="P2">P2</option><option value="P3">P3</option><option value="P4">P4</option>
+        <option value="P5">P5</option><option value="P6">P6</option><option value="P7">P7</option><option value="P8">P8</option>
+      </select>
+      <button class="add-btn" onclick="addTask()">+ ADD</button>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <span class="filter-label">STATUS:</span>
+    <button class="fbtn active" onclick="setFilter('all',this)">ALL</button>
+    <button class="fbtn ft"  onclick="setFilter('todo',this)">TODO</button>
+    <button class="fbtn fd"  onclick="setFilter('doing',this)">DOING</button>
+    <button class="fbtn fn"  onclick="setFilter('done',this)">DONE</button>
+    <button class="fbtn fp"  onclick="setFilter('pushed',this)">GIT PUSHED</button>
+    <div class="sort-wrap">
+      <span class="filter-label">SORT:</span>
+      <select class="sort-select" onchange="setSort(this.value)">
+        <option value="phase">PHASE</option><option value="newest">NEWEST</option>
+        <option value="oldest">OLDEST</option><option value="status">STATUS</option><option value="tag">TAG</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <span class="section-title">MASTER TASK QUEUE</span>
+    <span class="section-line"></span>
+    <span class="section-count" id="taskCount">0 TASKS</span>
+  </div>
+  <div class="task-list" id="taskList"></div>
+
+  <div class="footer-bar">
+    <span class="footer-info" id="footerInfo">SYSTEM ONLINE</span>
+    <button class="clear-btn" onclick="clearCompleted()">CLEAR DONE + PUSHED</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title">// EDIT TASK</div>
+    <textarea class="modal-input" id="editInput" rows="3"></textarea>
+    <div class="modal-row">
+      <select class="msel" id="editTag">
+        <option value="rust">RUST</option><option value="model">MODEL</option><option value="data">DATA</option>
+        <option value="feature">FEATURE</option><option value="deploy">DEPLOY</option><option value="chore">CHORE</option><option value="bug">BUG</option>
+      </select>
+      <select class="msel" id="editPhase">
+        <option value="P1">P1: FOUNDATION</option><option value="P2">P2: RUST ENGINE</option>
+        <option value="P3">P3: NN1+NN2</option><option value="P4">P4: NN3-NN5</option>
+        <option value="P5">P5: INTEGRATION</option><option value="P6">P6: PHASE-2 AIS</option>
+        <option value="P7">P7: VALIDATION</option><option value="P8">P8: DEPLOYMENT</option>
+      </select>
+      <select class="msel" id="editStatus">
+        <option value="todo">TODO</option><option value="doing">DOING</option>
+        <option value="done">DONE</option><option value="pushed">GIT PUSHED</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal()">CANCEL</button>
+      <button class="modal-save" onclick="saveEdit()">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SEED=[
+  // ── P1: FOUNDATION (M1-2) ──
+  {t:"Complete The Rust Book chapters 1–15 — study ownership, borrowing, lifetimes and generics",g:"rust",p:"P1"},
+  {t:"Complete all Rustlings exercises — confirm ownership model is fully understood before proceeding",g:"rust",p:"P1"},
+  {t:"Study quant finance basics: Sharpe ratio, VaR, drawdown, MACD, RSI, Bollinger Bands — read Ernie Chan ch.1-4",g:"chore",p:"P1"},
+  {t:"Set up Ubuntu/WSL2 dev environment: Rust toolchain (rustup), Python 3.11 (pyenv), VS Code + rust-analyzer",g:"deploy",p:"P1"},
+  {t:"Install and configure TimescaleDB (Docker), Redis (Docker), Git with GitHub repo and .gitignore",g:"deploy",p:"P1"},
+  {t:"Create full project directory structure — write Cargo.toml and pyproject.toml skeletons",g:"rust",p:"P1"},
+  {t:"Build toy PyO3 project: Rust function callable from Python — confirm PyO3 bridge compiles and executes",g:"rust",p:"P1"},
+  {t:"Download 3-year historical OHLCV for 20 NSE + 20 US stocks using yfinance",g:"data",p:"P1"},
+  {t:"Build simple Jupyter backtest with slippage, bid-ask spread and commission modeling — document data quality issues",g:"data",p:"P1"},
+  {t:"Consult patent attorney (₹5,000–₹15,000) — draft provisional patent for CDICE + SCSPN + PFCAT methods",g:"chore",p:"P1"},
+  {t:"File provisional patent application in India (₹3,000–₹8,000) — establish priority date before any public disclosure",g:"chore",p:"P1"},
+  {t:"Begin build-in-public content: start Substack newsletter or YouTube channel documenting the build process",g:"chore",p:"P1"},
+
+  // ── P2: RUST DATA ENGINE (M3-5) ──
+  {t:"Build Tokio hello-world: 3 concurrent WebSocket connections — study tokio::spawn, async/await, mpsc channels",g:"rust",p:"P2"},
+  {t:"Connect to Binance test WebSocket — parse single tick message with serde zero-copy deserialization",g:"rust",p:"P2"},
+  {t:"Build WebSocketIngester struct with auto-reconnect logic — connect to Binance BTC/ETH simultaneously",g:"rust",p:"P2"},
+  {t:"Connect Alpha Vantage REST API for NSE data — measure parse latency: target under 5 microseconds per tick",g:"rust",p:"P2"},
+  {t:"Implement BTreeMap-based L2 order book with bid/ask level updates, deletions and removals",g:"rust",p:"P2"},
+  {t:"Implement order_imbalance() computation on order book — wrap in RwLock for thread-safe concurrent reads",g:"rust",p:"P2"},
+  {t:"Write 100% unit test coverage on order book update logic — test 10,000 synthetic update events",g:"rust",p:"P2"},
+  {t:"Integrate ta crate: RSI-14, MACD-12-26-9, Bollinger Bands-20 computed on every tick update",g:"rust",p:"P2"},
+  {t:"Build FeatureVector struct and store rolling 200-tick history per symbol in DashMap",g:"rust",p:"P2"},
+  {t:"Benchmark feature engine: target 50,000 ticks/second sustained throughput with no memory leak",g:"rust",p:"P2"},
+  {t:"Implement Rust risk engine skeleton: VaR with statrs distributions, position_size_limit(), max_drawdown_check()",g:"rust",p:"P2"},
+  {t:"Implement all PyO3 exports: start_engine(), get_features(), get_feature_window(), get_orderbook_snapshot(), submit_order()",g:"rust",p:"P2"},
+  {t:"Run maturin develop --release — call every PyO3 function from Python test script, measure round-trip latency",g:"rust",p:"P2"},
+  {t:"Run all WebSocket feeds simultaneously for 72 hours — verify zero memory leak with heaptrack",g:"rust",p:"P2"},
+  {t:"Verify all feature values match pandas reference implementation within 0.001% — fix any discrepancies",g:"rust",p:"P2"},
+  {t:"Post first technical blog post / YouTube video about the Rust data engine build",g:"chore",p:"P2"},
+
+  // ── P3: NN1 PRICE + NN2 SENTIMENT (M5-8) ──
+  {t:"Build Python data loader calling Rust engine for feature windows — store 3-year tick history in TimescaleDB",g:"data",p:"P3"},
+  {t:"Build walk-forward cross-validation split generator — verify absolutely zero look-ahead bias in all splits",g:"data",p:"P3"},
+  {t:"Build LSTM + multi-head attention model in PyTorch: input [batch,60,12], output [direction,magnitude,confidence] x3 horizons",g:"model",p:"P3"},
+  {t:"Train NN1 on 2021–2023, validate on 2024 — log everything to W&B, target validation accuracy > 54% on direction",g:"model",p:"P3"},
+  {t:"Run Optuna TPE hyperparameter search over: hidden_dim, num_layers, dropout, learning_rate, sequence_length — 50 trials min",g:"model",p:"P3"},
+  {t:"Build proper NN1 backtest: buy at ask / sell at bid, 0.05% slippage, walk-forward 2021–2024, target Sharpe > 1.0 OOS",g:"model",p:"P3"},
+  {t:"Set up Weights & Biases experiment dashboard — log all training runs, hyperparameters and validation metrics",g:"deploy",p:"P3"},
+  {t:"Download ProsusAI/finbert — build async news fetching pipeline: NewsAPI (100 req/day), Reddit PRAW, SEC EDGAR",g:"data",p:"P3"},
+  {t:"Build text preprocessing pipeline for FinBERT — manually label 500 headlines, augment to 5,000 labeled examples",g:"data",p:"P3"},
+  {t:"Fine-tune FinBERT with custom classification head — target validation F1 > 0.75 on 3-class sentiment",g:"model",p:"P3"},
+  {t:"Build NN2 inference pipeline: process company's last 4 hours of news in under 2 seconds — cache in Redis 1hr TTL",g:"model",p:"P3"},
+  {t:"Run NN1+NN2 combined paper trades for 30 days — build correlation analysis between sentiment and next-day price moves",g:"model",p:"P3"},
+  {t:"Start freelancing on Upwork/Toptal as Rust + Python quant developer — charge ₹5,000–₹12,000/hr",g:"chore",p:"P3"},
+
+  // ── P4: NN3 REGIME + NN4 RISK + NN5 PORTFOLIO (M8-13) ──
+  {t:"Build 1D-CNN that takes 30-day price windows and extracts regime feature vectors",g:"model",p:"P4"},
+  {t:"Pipe CNN output into GaussianHMM with 4 states (bull/bear/sideways/crisis) — train on 2010–2023 data",g:"model",p:"P4"},
+  {t:"Validate NN3: must detect 2020 COVID crisis by March 5, 2020 in backtesting replay — fix if it doesn't",g:"model",p:"P4"},
+  {t:"Build regime-weighting function: bull regime = 0.7 NN1 trust, crisis = 30% all signals + maximize cash",g:"model",p:"P4"},
+  {t:"Build 6-layer MLP with MC Dropout for NN4 — inputs: portfolio composition, correlation matrix, VIX, drawdown, signal agreement",g:"model",p:"P4"},
+  {t:"Implement Monte Carlo Dropout inference: 100 stochastic forward passes, variance = epistemic uncertainty score",g:"model",p:"P4"},
+  {t:"Train NN4 with MSE loss against realized drawdowns from historical data",g:"model",p:"P4"},
+  {t:"Validate NN4 calibration via reliability diagrams — predicted uncertainty must correlate with actual prediction error > 0.6",g:"model",p:"P4"},
+  {t:"Build NN4 → Rust hard-limit integration: run 100 risk-violating test trades — all must be rejected by Rust engine",g:"rust",p:"P4"},
+  {t:"Build custom Gymnasium environment: observation = [NN1-4 outputs + user preferences], action = Dirichlet allocation",g:"model",p:"P4"},
+  {t:"Define PPO multi-objective reward: alpha*Sharpe + beta*Calmar - gamma*turnover - delta*VaR_violation",g:"model",p:"P4"},
+  {t:"Train NN5 PPO using stable-baselines3 on 3-year historical data — reach 1M+ timesteps without reward collapse",g:"model",p:"P4"},
+  {t:"Tune NN5 reward weights with Optuna — test 3 investor profiles (conservative/moderate/aggressive), verify distinct allocations",g:"model",p:"P4"},
+  {t:"Verify NN5 correctly reduces all positions in crisis regime and respects investor risk tolerance",g:"model",p:"P4"},
+  {t:"Run 30-day paper trading with all 5 NNs simultaneously — verify zero memory leak or crash over 30 days",g:"deploy",p:"P4"},
+  {t:"Launch paid signal subscription Telegram/Discord channel — onboard first 10 paying subscribers at ₹1,500/month",g:"chore",p:"P4"},
+
+  // ── P5: FULL SYSTEM INTEGRATION (M13-16) ──
+  {t:"Build FastAPI REST endpoints: POST /analyze (prefs→decisions), GET /portfolio, GET /signals/{symbol}, GET /track-record",g:"feature",p:"P5"},
+  {t:"Add JWT authentication and rate limiting to FastAPI — load test: 100 concurrent users, p95 < 500ms",g:"feature",p:"P5"},
+  {t:"Deploy Kafka on Docker — set up topics: raw-ticks, feature-vectors, nn-signals, execution-events",g:"deploy",p:"P5"},
+  {t:"Route Rust tick output through Kafka topics — enables tick replay for backtesting and complete audit trail",g:"rust",p:"P5"},
+  {t:"Run complete end-to-end pipeline: Rust ingestion → Kafka → Python NNs → NN5 decision → Rust execution → paper order log",g:"deploy",p:"P5"},
+  {t:"Test 100 complete pipeline cycles without error — test WebSocket kill + verify auto-recovery within 30 seconds",g:"deploy",p:"P5"},
+  {t:"Test GIL release: confirm all 5 NNs run in overlapping GPU time slices (not sequentially) using threading profiler",g:"model",p:"P5"},
+  {t:"Set up Grafana + Prometheus: tick throughput, order book depth, PyO3 call latency, NN inference latency, paper PnL",g:"deploy",p:"P5"},
+  {t:"Set up Telegram/Slack alerts: WebSocket disconnect, NN confidence below threshold, drawdown exceeds 3%",g:"deploy",p:"P5"},
+  {t:"Build health check endpoint — verify all systemd services auto-restart within 30 seconds after kill",g:"deploy",p:"P5"},
+  {t:"Run 6-month paper trading — log every decision with full NN reasoning chain — target Sharpe > 1.2 sustained",g:"data",p:"P5"},
+  {t:"Build automated weekly retraining pipeline: rolling Sharpe drops 60% below 90-day baseline → trigger retrain",g:"feature",p:"P5"},
+  {t:"Build model registry with version tagging — never overwrite old checkpoints, log all retrains to W&B",g:"deploy",p:"P5"},
+  {t:"Write Docker-compose file: entire Phase 1 system (7 services) starts in one command",g:"deploy",p:"P5"},
+  {t:"Scale signal subscription to 50+ paying subscribers at ₹2,000/month = ₹1,00,000/month recurring",g:"chore",p:"P5"},
+  {t:"Pitch first B2B brokerage partnership with 6-month paper track record and signal API demonstration",g:"chore",p:"P5"},
+
+  // ── P6: PHASE 2 — GEOSPATIAL + NOVEL NNs (M16-22) ──
+  {t:"Extend Rust engine: connect to AISHub free WebSocket — stream ship positions and draft fields in real-time",g:"rust",p:"P6"},
+  {t:"Connect to OpenSky Network API for aircraft positions — parse ICAO24, callsign, altitude, velocity",g:"rust",p:"P6"},
+  {t:"Parse ITF vessel registry CSV — build MMSI → vessel_type (tanker/bulk/container/ferry) lookup in DashMap",g:"data",p:"P6"},
+  {t:"Benchmark Rust geospatial engine: must handle 50,000 vessel position updates per minute without memory leak",g:"rust",p:"P6"},
+  {t:"Implement DBSCAN spatial clustering on AIS positions within UN/LOCODE port bounding boxes every 15 minutes (GPCI — patent claim #3)",g:"rust",p:"P6"},
+  {t:"Compute per-port GPCI: vessel_count_in_anchorage, median_wait_time, throughput_index — normalize with 90-day rolling baseline",g:"rust",p:"P6"},
+  {t:"Export GPCI scores for 50 major ports via PyO3 — validate against historical congestion events (Suez 2021, LA 2021)",g:"rust",p:"P6"},
+  {t:"Build CDICE: compute loaded_fraction from AIS draft using physics formula: (draft-empty_draft)/(max_draft-empty_draft) per vessel class",g:"model",p:"P6"},
+  {t:"Infer commodity type from origin-destination port pair using UN/LOCODE metadata and historical routing patterns",g:"data",p:"P6"},
+  {t:"Aggregate global inventory delta per commodity type — calibrate CDICE against EIA weekly oil reports (target R² > 0.7) (patent claim #2)",g:"model",p:"P6"},
+  {t:"Build company relationship graph: 5,000+ listed company nodes from NSE 500 + S&P 500",g:"data",p:"P6"},
+  {t:"Parse SEC 10-K 'material suppliers' disclosures using spaCy NER — extract directed supplier/customer edges",g:"data",p:"P6"},
+  {t:"Augment graph with OpenCorporates ownership + Wikidata subsidiary relationships — target 15,000+ edges",g:"data",p:"P6"},
+  {t:"Implement SCSPN epidemic-model GNN using PyTorch Geometric — compute per-company supply chain contagion R_sc (patent claim #1)",g:"model",p:"P6"},
+  {t:"Update SCSPN graph edge weights dynamically from GPCI port congestion and CDICE commodity inventory signals",g:"model",p:"P6"},
+  {t:"Train SCSPN on historical events: 2021 Suez Canal blockage, 2020 semiconductor shortage, 2022 Ukraine grain disruption",g:"model",p:"P6"},
+  {t:"Validate SCSPN: must identify top-10 affected companies from 2021 Suez Canal blockage in historical replay — mandatory gate",g:"model",p:"P6"},
+  {t:"Build PFCAT cross-modal transformer: Q=market microstructure features, K/V=physical world sequence (patent claim #4)",g:"model",p:"P6"},
+  {t:"Train PFCAT — model must learn temporal lead-lag between physical events and financial price discovery automatically",g:"model",p:"P6"},
+  {t:"Validate PFCAT: achieve standalone Sharpe > 0.6 on energy/materials sector stocks — required before integration",g:"model",p:"P6"},
+  {t:"Update NN5 PPO state vector to include all Phase 2 outputs — retrain with full expanded state",g:"model",p:"P6"},
+  {t:"Run A/B backtest Phase 1 only vs Phase 1+Phase 2 — document Sharpe improvement must exceed 0.15",g:"model",p:"P6"},
+  {t:"File full patent application for all 4 claims (₹30,000–₹60,000 with attorney) — supersedes provisional",g:"chore",p:"P6"},
+  {t:"Begin B2B licensing conversations with data vendors, brokerages, and commodity trading firms using Phase 2 capabilities",g:"chore",p:"P6"},
+
+  // ── P7: VALIDATION + AUDIT (M22-24) ──
+  {t:"Run complete walk-forward backtest 2018–2024: 10+ windows with 2yr train / 6mo test / 3mo roll forward",g:"data",p:"P7"},
+  {t:"Calculate statistical significance of edge: requires p < 0.05 — if not achieved, fix models before any deployment",g:"model",p:"P7"},
+  {t:"Document Sharpe, Calmar, max drawdown, win rate for each of the 10+ walk-forward windows individually",g:"data",p:"P7"},
+  {t:"Stress test: replay 2020 COVID crash (Feb–Apr) — verify Rust kill switch triggers, NN3 detects crisis by Mar 5",g:"model",p:"P7"},
+  {t:"Stress test: replay 2022 Russia-Ukraine market open (Feb 24) — document maximum drawdown experienced",g:"model",p:"P7"},
+  {t:"Stress test: replay 2023 SVB collapse (Mar 10) and 2018 VIX spike (Feb 5) — verify all risk gates activate",g:"model",p:"P7"},
+  {t:"Add SHAP values to NN1 and NN5 — build explanation API endpoint: GET /explain/{trade_id} returns feature contributions",g:"feature",p:"P7"},
+  {t:"Implement conformal prediction intervals on NN1 — run coverage test on 1,000+ holdout predictions, verify 95%+ actual coverage",g:"model",p:"P7"},
+  {t:"Commission independent quant finance review of walk-forward methodology (₹10,000–₹20,000) — get written sign-off",g:"chore",p:"P7"},
+  {t:"Build investor pitch deck: system architecture, verified track record, backtesting methodology, risk management overview",g:"chore",p:"P7"},
+  {t:"Record 10-minute live system demo video showing real-time dashboard and decision reasoning chain",g:"chore",p:"P7"},
+  {t:"Write 2-page executive summary for investor outreach — clear, jargon-free, focused on risk-adjusted returns",g:"chore",p:"P7"},
+  {t:"Identify 10 target HNI investors and family offices — build personalised contact and outreach plan",g:"chore",p:"P7"},
+  {t:"Complete SEBI registration consultation: understand PMS requirements, compliance costs, minimum capital rules",g:"chore",p:"P7"},
+
+  // ── P8: CLOUD DEPLOYMENT + LIVE TRADING (M24-26) ──
+  {t:"Provision AWS EC2 g4dn.xlarge (GPU) for NNs + r5.large for Rust engine — configure VPC, private subnets, security groups",g:"deploy",p:"P8"},
+  {t:"Set up TimescaleDB on RDS and Redis on ElastiCache — only port 443 exposed, SSL with Certbot/Let's Encrypt",g:"deploy",p:"P8"},
+  {t:"Write systemd service units for all 6 services: rust-engine, nn-inference, fastapi, kafka, redis, model-retrain.timer",g:"deploy",p:"P8"},
+  {t:"Deploy with Docker Compose on EC2 — test kill and auto-restart of each service, verify recovery within 30 seconds",g:"deploy",p:"P8"},
+  {t:"Set up Grafana Cloud dashboard — add PagerDuty alerts: system down > 2min, drawdown > 3%, WS disconnect > 30s",g:"deploy",p:"P8"},
+  {t:"Set up daily automated email: PnL, signals issued, uptime — weekly auto-generated model performance report",g:"deploy",p:"P8"},
+  {t:"Start live trading with ₹1,00,000 real capital — maximum ₹10,000 per trade — run for 30 days",g:"deploy",p:"P8"},
+  {t:"After 30 days: confirm live results are within 20% of paper trading — if large gap, identify and fix root cause",g:"deploy",p:"P8"},
+  {t:"Launch paid Telegram/Discord signal channel: ₹999/month (alerts tier) and ₹3,999/month (raw API access tier)",g:"feature",p:"P8"},
+  {t:"Set up Razorpay payment gateway — write subscriber onboarding docs — target 100 subscribers in first 30 days",g:"feature",p:"P8"},
+  {t:"Announce signal launch in r/IndiaInvestments, Twitter/X, LinkedIn — post with backtest track record as proof",g:"chore",p:"P8"},
+  {t:"Email 20 Indian brokerages and wealth tech startups about white-label signal API licensing opportunity",g:"chore",p:"P8"},
+  {t:"Target 1 pilot B2B agreement within 60 days: ₹2,00,000–₹5,00,000 for 3-month proof-of-concept contract",g:"chore",p:"P8"},
+  {t:"Establish weekly operational routine: model performance audit, data quality checks, regime monitoring (10-15 hrs/week ongoing)",g:"chore",p:"P8"},
+];
+
+const PM={P1:{l:"Foundation",m:"M1–2"},P2:{l:"Rust Engine",m:"M3–5"},P3:{l:"NN1+NN2",m:"M5–8"},P4:{l:"NN3-NN5",m:"M8–13"},P5:{l:"Integration",m:"M13–16"},P6:{l:"Phase-2 AIS",m:"M16–22"},P7:{l:"Validation",m:"M22–24"},P8:{l:"Deployment",m:"M24–26"}};
+const SO={todo:0,doing:1,done:2,pushed:3};
+const PO={P1:0,P2:1,P3:2,P4:3,P5:4,P6:5,P7:6,P8:7};
+const SN={todo:"doing",doing:"done",done:"pushed",pushed:"todo"};
+const SNL={todo:"DOING",doing:"DONE",done:"PUSHED",pushed:"TODO"};
+const SNC={todo:"ab-doing",doing:"ab-done",done:"ab-pushed",pushed:"ab-todo"};
+const SB={
+  todo:'<span class="sbadge sb-todo">TODO</span>',
+  doing:'<span class="sbadge sb-doing">DOING</span>',
+  done:'<span class="sbadge sb-done">DONE</span>',
+  pushed:'<span class="sbadge sb-pushed">PUSHED</span>'
+};
+
+let tasks=[],filter="all",sort="phase",editId=null,phaseF=null;
+
+function init(){
+  const s=localStorage.getItem("finsent_v3");
+  if(s){ tasks=JSON.parse(s); }
+  else{
+    const n=Date.now();
+    tasks=SEED.map((x,i)=>({id:n+i,t:x.t,g:x.g,p:x.p,s:"todo",c:n+i*100}));
+    save();
+  }
+}
+function save(){localStorage.setItem("finsent_v3",JSON.stringify(tasks));}
+function fmt(ts){const d=new Date(ts);return d.toLocaleDateString("en-IN",{month:"short",day:"numeric"});}
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
+function addTask(){
+  const inp=document.getElementById("taskInput"),t=inp.value.trim();
+  if(!t){inp.focus();return;}
+  tasks.unshift({id:Date.now(),t,g:document.getElementById("tagSel").value,p:document.getElementById("phaseSel").value,s:"todo",c:Date.now()});
+  save();inp.value="";render();inp.focus();
+}
+function setFilter(f,btn){
+  filter=f;
+  document.querySelectorAll(".fbtn").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");render();
+}
+function setSort(s){sort=s;render();}
+function setPhaseF(ph){phaseF=(phaseF===ph)?null:ph;buildPhaseNav();render();}
+function cycle(id){
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  t.s=SN[t.s];if(t.s==="pushed")t.pushed=Date.now();
+  save();render();
+}
+function del(id){tasks=tasks.filter(x=>x.id!==id);save();render();}
+function openEdit(id){
+  const t=tasks.find(x=>x.id===id);if(!t)return;
+  editId=id;
+  document.getElementById("editInput").value=t.t;
+  document.getElementById("editTag").value=t.g;
+  document.getElementById("editPhase").value=t.p;
+  document.getElementById("editStatus").value=t.s;
+  document.getElementById("editModal").classList.add("open");
+}
+function saveEdit(){
+  const t=tasks.find(x=>x.id===editId);if(!t)return;
+  t.t=document.getElementById("editInput").value.trim()||t.t;
+  t.g=document.getElementById("editTag").value;
+  t.p=document.getElementById("editPhase").value;
+  t.s=document.getElementById("editStatus").value;
+  save();closeModal();render();
+}
+function closeModal(){document.getElementById("editModal").classList.remove("open");editId=null;}
+function clearCompleted(){
+  if(!confirm("Remove all DONE and GIT PUSHED tasks?"))return;
+  tasks=tasks.filter(x=>x.s!=="done"&&x.s!=="pushed");save();render();
+}
+
+function buildPhaseNav(){
+  document.getElementById("phaseNav").innerHTML=Object.entries(PM).map(([k,v])=>{
+    const cnt=tasks.filter(x=>x.p===k).length;
+    const dn=tasks.filter(x=>x.p===k&&(x.s==="done"||x.s==="pushed")).length;
+    return`<div class="phase-pip ${phaseF===k?"active":""}" onclick="setPhaseF('${k}')">
+      <span class="pip-label">${k}: ${v.l}</span>
+      <span class="pip-progress">${v.m} · ${dn}/${cnt}</span>
+    </div>`;
+  }).join("");
+}
+
+function render(){
+  const total=tasks.length;
+  const doing=tasks.filter(x=>x.s==="doing").length;
+  const done=tasks.filter(x=>x.s==="done").length;
+  const pushed=tasks.filter(x=>x.s==="pushed").length;
+  document.getElementById("sTotal").textContent=total;
+  document.getElementById("sDoing").textContent=doing;
+  document.getElementById("sDone").textContent=done;
+  document.getElementById("sPushed").textContent=pushed;
+  const pct=total?Math.round((done+pushed)/total*100):0;
+  document.getElementById("progPct").textContent=pct+"%";
+  document.getElementById("progFill").style.width=pct+"%";
+  buildPhaseNav();
+
+  let vis=[...tasks];
+  if(filter!=="all") vis=vis.filter(x=>x.s===filter);
+  if(phaseF) vis=vis.filter(x=>x.p===phaseF);
+  if(sort==="phase") vis.sort((a,b)=>PO[a.p]-PO[b.p]||a.c-b.c);
+  else if(sort==="newest") vis.sort((a,b)=>b.c-a.c);
+  else if(sort==="oldest") vis.sort((a,b)=>a.c-b.c);
+  else if(sort==="status") vis.sort((a,b)=>SO[a.s]-SO[b.s]);
+  else if(sort==="tag") vis.sort((a,b)=>a.g.localeCompare(b.g));
+
+  document.getElementById("taskCount").textContent=vis.length+" TASK"+(vis.length!==1?"S":"");
+  const list=document.getElementById("taskList");
+  if(!vis.length){list.innerHTML='<div class="empty-state">NO TASKS FOUND — SYSTEM IDLE</div>';return;}
+  list.innerHTML=vis.map((x,i)=>`
+    <div class="task-item s-${x.s}">
+      <span class="task-idx">${String(i+1).padStart(2,"0")}</span>
+      <span class="task-pb">${x.p}</span>
+      <span class="task-text" onclick="openEdit(${x.id})">${esc(x.t)}</span>
+      <span class="ttag tg-${x.g}">${x.g.toUpperCase()}</span>
+      ${SB[x.s]}
+      <span class="task-time">${fmt(x.c)}</span>
+      <div class="task-actions">
+        <button class="abtn cycle ${SNC[x.s]}" onclick="cycle(${x.id})" data-tip="→ ${SNL[x.s]}">${SNL[x.s]}</button>
+        <button class="abtn" onclick="openEdit(${x.id})" data-tip="EDIT">&#9998;</button>
+        <button class="abtn ab-del" onclick="del(${x.id})" data-tip="DELETE">&#10005;</button>
+      </div>
+    </div>`).join("");
+  document.getElementById("footerInfo").textContent=`SYSTEM ONLINE — ${total} TASKS // ${pushed} SHIPPED TO GIT`;
+}
+
+document.getElementById("taskInput").addEventListener("keydown",e=>{if(e.key==="Enter")addTask();});
+document.getElementById("editModal").addEventListener("click",e=>{if(e.target===document.getElementById("editModal"))closeModal();});
+
+const TD=[{s:"NIFTY50",v:"22,480",c:"+1.10%",u:true},{s:"BTC",v:"$67,420",c:"+3.42%",u:true},{s:"NVDA",v:"$875.30",c:"+4.05%",u:true},{s:"AAPL",v:"$182.52",c:"+2.31%",u:true},{s:"MSFT",v:"$415.20",c:"+1.12%",u:true},{s:"META",v:"$502.30",c:"+2.15%",u:true},{s:"GOOGL",v:"$152.40",c:"-0.54%",u:false},{s:"TSLA",v:"$248.90",c:"-1.23%",u:false},{s:"AMZN",v:"$185.60",c:"+1.87%",u:true},{s:"ETH",v:"$3,580",c:"+2.18%",u:true},{s:"GOLD",v:"$2,340",c:"-0.21%",u:false},{s:"RELIANCE",v:"₹2,840",c:"+0.82%",u:true},{s:"JPM",v:"$196.80",c:"+0.92%",u:true},{s:"NFLX",v:"$628.40",c:"+1.89%",u:true}];
+document.getElementById("tickerTrack").innerHTML=[...TD,...TD].map(t=>`<div class="ticker-item"><span class="ticker-sym">${t.s}</span><span class="ticker-val">${t.v}</span><span class="${t.u?"ticker-up":"ticker-dn"}">${t.c}</span></div>`).join("");
+
+(function(){
+  const cv=document.getElementById("particles"),ctx=cv.getContext("2d");
+  let W,H,d=[];
+  const rsz=()=>{W=cv.width=innerWidth;H=cv.height=innerHeight;};
+  const ini=()=>{d=[];const n=Math.floor(W*H/18000);for(let i=0;i<n;i++)d.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.2+.3,a:Math.random(),sx:(Math.random()-.5)*.15,vy:-Math.random()*.12-.04});};
+  const drw=()=>{ctx.clearRect(0,0,W,H);for(const p of d){ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=`rgba(0,229,255,${p.a*.55})`;ctx.fill();p.y+=p.vy;p.x+=p.sx;p.a+=(Math.random()-.5)*.01;p.a=Math.max(.05,Math.min(.9,p.a));if(p.y<-5){p.y=H+5;p.x=Math.random()*W;}if(p.x<-5)p.x=W+5;if(p.x>W+5)p.x=-5;}requestAnimationFrame(drw);};
+  addEventListener("resize",()=>{rsz();ini();});rsz();ini();drw();
+})();
+
+init();render();
+</script>
+</body>
+</html>
