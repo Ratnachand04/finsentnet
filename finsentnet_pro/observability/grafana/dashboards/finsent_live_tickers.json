@@ -1,0 +1,153 @@
+{
+  "id": null,
+  "uid": "finsent-live",
+  "title": "FINSENT Live Tickers",
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "5s",
+  "tags": ["finsent", "live", "quotes"],
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "ticker",
+        "type": "query",
+        "label": "Ticker",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values(finsent_live_price, ticker)",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 2,
+        "sort": 1,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Live Price",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {
+          "expr": "finsent_live_price{ticker=~\"$ticker\"}",
+          "legendFormat": "{{ticker}} {{market}} ({{source}})",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"displayMode": "table", "placement": "bottom"},
+        "tooltip": {"mode": "multi"}
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Live Change %",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {
+          "expr": "finsent_live_change_pct{ticker=~\"$ticker\"}",
+          "legendFormat": "{{ticker}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "green", "value": 0}
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Live Volume",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {
+          "expr": "finsent_live_volume{ticker=~\"$ticker\"}",
+          "legendFormat": "{{ticker}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom"}
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Data Source Health (1=ok)",
+      "gridPos": {"h": 6, "w": 24, "x": 0, "y": 16},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {
+          "expr": "avg by (ticker, market) (finsent_live_scrape_success{ticker=~\"$ticker\"})",
+          "legendFormat": "{{ticker}} {{market}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "green", "value": 1}
+            ]
+          }
+        },
+        "overrides": []
+      }
+    }
+  ]
+}
