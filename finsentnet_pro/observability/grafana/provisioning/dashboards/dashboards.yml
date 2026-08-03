@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: "FINSENT Dashboards"
+    orgId: 1
+    folder: "FINSENT"
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    options:
+      path: /var/lib/grafana/dashboards
