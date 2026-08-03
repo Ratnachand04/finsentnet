@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+.env/
+.env
+.env.*
+!.env.example
+
+# Data & outputs
+data/raw/
+data/processed/
+outputs/
+checkpoints/
+*.parquet
+*.h5
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ---------------------------------------------------------------------------------
+# Generated paper artifacts.
+#
+# These are OUTPUTS of finsent.eval.report, never inputs. Committing them invites the
+# exact failure this rebuild exists to correct: a table in the repository that nobody
+# can trace back to a run. Regenerate with `make reproduce`; every file carries its own
+# git sha, config hash, data hash and seed list.
+# ---------------------------------------------------------------------------------
+paper/tables/
+paper/figures/
+paper/manifest_*.json
+runs/
+
+# Cached FinBERT embeddings: large, and derivable from the news corpus plus the
+# checkpoint named in configs/base.yaml.
+data/cache/
+
+# Experiment tracking
+mlruns/
+wandb/
+.pytest_cache/
+
+# ---------------------------------------------------------------------------------
+# Generated SQL training dumps: 581 files, 6.7 GB, produced by
+# finsentnet_pro/backend/data_pipeline/export_training_sql.py. They are regenerable
+# output, they exceeded GitHub's push limit on their own, and a repository that cannot
+# be cloned is not a reproducible one.
+# ---------------------------------------------------------------------------------
+finsentnet_pro/backend/data/sql_training_companies/
+finsentnet_pro/backend/data/tunnels/
+finsentnet_pro/backend/checkpoints/
+*.jsonl
