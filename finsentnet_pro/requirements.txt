@@ -1,0 +1,57 @@
+# ══════════════════════════════════════════════════════
+# FINSENT NET PRO — Dependencies
+# AI-Powered Quantitative Trading Intelligence
+# ══════════════════════════════════════════════════════
+
+# Core ML / DL
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.10.0
+scikit-learn>=1.2.0
+
+# NLP
+transformers>=4.30.0
+tokenizers>=0.13.0
+
+# Financial Data
+yfinance>=0.2.28
+alpha_vantage>=2.3.1
+kiteconnect>=4.2.0
+requests>=2.31.0
+
+# API Backend
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+pydantic>=2.0.0
+
+# Data Processing
+pyarrow>=12.0.0
+lxml>=4.9.0
+
+# Backtesting
+backtrader>=1.9.78
+quantstats>=0.0.62
+
+# Portfolio Optimization
+PyPortfolioOpt>=1.5.5
+
+# Visualization (backend charts)
+plotly>=5.15.0
+
+# Utilities
+python-dotenv>=1.0.0
+aiofiles>=23.1.0
+websockets>=11.0.3
+tqdm>=4.65.0
+hmmlearn>=0.3.0
+
+# Database
+sqlalchemy>=2.0.0
+
+# Monitoring
+prometheus-client>=0.17.0
+
+# Distributed fanout
+redis>=5.0.0
