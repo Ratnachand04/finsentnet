@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "finsent-research"
+version = "0.3.0"
+description = "Calibration-aware cross-modal learning for equity direction"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+# The evaluation, data and decision layers depend only on the scientific stack, so the
+# full protocol -- purged splits, metrics, significance tests, calibration, conformal
+# prediction and the backtest -- reproduces without a deep-learning install. PyTorch is
+# an extra, needed only to train the network itself.
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scipy>=1.10",
+    "pyyaml>=6.0",
+    "matplotlib>=3.7",
+]
+
+[project.optional-dependencies]
+torch = ["torch>=2.1"]
+text = ["transformers>=4.35", "tokenizers>=0.15"]
+data = ["yfinance>=0.2", "pyarrow>=14.0"]
+optimise = ["cvxpy>=1.4", "osqp>=0.6"]
+parity = ["TA-Lib>=0.4.28"]
+dev = ["pytest>=7.4", "pytest-cov>=4.1", "ruff>=0.1"]
+
+[tool.setuptools.packages.find]
+include = ["finsent*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = [
+    "ignore::DeprecationWarning:pkg_resources.*",
+]
+markers = [
+    "slow: takes more than a few seconds",
+    "torch: requires PyTorch",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4"]
+ignore = [
+    "E741",  # ambiguous variable name: 'l' is the conventional name for a low series
+    "B008",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
