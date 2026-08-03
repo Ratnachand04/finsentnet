@@ -1,0 +1,87 @@
+
+<style>
+.fp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fp-card { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 13px 15px; cursor: pointer; transition: border-color 0.15s; }
+.fp-card:hover { border-color: var(--color-border-primary); }
+.fp-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.fp-num { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 8px; white-space: nowrap; }
+.fp-kill { background:#FCEBEB; color:#791F1F; }
+.fp-blind { background:#FAEEDA; color:#633806; }
+.fp-reg { background:#EEEDFE; color:#3C3489; }
+.fp-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+.fp-body { font-size: 12px; color: var(--color-text-secondary); line-height: 1.55; }
+.fp-fix { font-size: 11px; color: var(--color-text-success); margin-top: 5px; font-weight: 500; }
+.fp-section-label { font-size: 12px; font-weight: 500; color: var(--color-text-tertiary); margin: 1rem 0 6px; text-transform: none; letter-spacing: 0; }
+</style>
+
+<div class="fp-section-label">Backtesting traps — where most people declare false victory</div>
+<div class="fp-grid">
+  <div class="fp-card" onclick="sendPrompt('Explain look-ahead bias in quant backtesting and how to prevent it completely')">
+    <div class="fp-top"><span class="fp-num fp-kill">kills 60% of projects</span></div>
+    <div class="fp-title">Look-ahead bias in backtesting</div>
+    <div class="fp-body">Using data that wasn't available at the time of the trade decision. The most seductive trap: your model sees tomorrow's open price while deciding today. Even subtle forms — using a daily close to trigger an intraday trade — produce fantasy backtest profits that vanish live.</div>
+    <div class="fp-fix">Fix: strict point-in-time datasets, walk-forward validation only, never use adjusted prices for signals</div>
+  </div>
+  <div class="fp-card" onclick="sendPrompt('What is survivorship bias in stock data and how does it inflate backtest returns?')">
+    <div class="fp-top"><span class="fp-num fp-kill">kills 40% of strategies</span></div>
+    <div class="fp-title">Survivorship bias in training data</div>
+    <div class="fp-body">Training on today's S&P 500 constituents means your model never sees Lehman Brothers, Enron, or Kodak — the companies that failed and were removed from the index. Your model learns "survivors are safe" and dramatically underestimates downside risk on real portfolios.</div>
+    <div class="fp-fix">Fix: use CRSP or Compustat point-in-time universe data, explicitly include delisted tickers</div>
+  </div>
+  <div class="fp-card" onclick="sendPrompt('What is transaction cost and slippage modeling and why do most backtests ignore it?')">
+    <div class="fp-top"><span class="fp-num fp-blind">ignored by 80%</span></div>
+    <div class="fp-title">Ignoring realistic transaction costs</div>
+    <div class="fp-body">A strategy with 0.1% edge per trade that trades 50 times/day and ignores 0.05% bid-ask spread + 0.02% commission + 0.03% slippage actually loses money. Most retail backtests use mid-price fills, which never happen in live markets. HFT strategies die here first.</div>
+    <div class="fp-fix">Fix: model fills at ask (buys) and bid (sells), add realistic slippage as function of order size / ADV</div>
+  </div>
+  <div class="fp-card" onclick="sendPrompt('What is overfitting in quantitative finance and how is it different from ML overfitting?')">
+    <div class="fp-top"><span class="fp-num fp-kill">destroys 70% of NN strategies</span></div>
+    <div class="fp-title">Model overfitting to historical regimes</div>
+    <div class="fp-body">Neural networks trained on 2010–2020 bull market data learn "dips always recover." They have zero concept of prolonged bear markets because they've never seen one proportionally in training. The model confuses "what happened in this dataset" with "what markets do." NN5 is especially vulnerable.</div>
+    <div class="fp-fix">Fix: train across multiple full market cycles, include 2001, 2008, 2020 explicitly, use regime-stratified validation</div>
+  </div>
+</div>
+
+<div class="fp-section-label">Live deployment failures — where paper-profit systems die in production</div>
+<div class="fp-grid">
+  <div class="fp-card" onclick="sendPrompt('What is alpha decay in quantitative trading and how quickly do ML-based signals decay?')">
+    <div class="fp-top"><span class="fp-num fp-kill">erodes 90% of edge within months</span></div>
+    <div class="fp-title">Alpha decay — signals expire faster than you retrain</div>
+    <div class="fp-body">Every profitable signal gets arbitraged away. Academic papers show ML-based price signals in liquid markets decay to noise within 3–12 months after discovery. Most builders deploy and forget. By the time you notice PnL degrading, the model is already blind. This is the single biggest long-term killer.</div>
+    <div class="fp-fix">Fix: weekly model performance audits, automated regime-triggered retraining pipeline, decay detection alerts</div>
+  </div>
+  <div class="fp-card" onclick="sendPrompt('What is market impact and self-fulfilling prediction problem in algorithmic trading?')">
+    <div class="fp-top"><span class="fp-num fp-blind">ignored until AUM grows</span></div>
+    <div class="fp-title">Market impact and self-fulfillment at scale</div>
+    <div class="fp-body">At small size you're a price taker. At larger AUM, your own orders move the market. Worse: if enough traders use similar ML signals (which they do — FinBERT is public), correlated signals cause crowded trades and flash crashes driven by everyone exiting simultaneously. Your model's signal IS the crash.</div>
+    <div class="fp-fix">Fix: position size caps as % of ADV, decorrelation from known public signals, proprietary alternative data</div>
+  </div>
+  <div class="fp-card" onclick="sendPrompt('What is regime shift detection failure and why do quant models fail during black swan events?')">
+    <div class="fp-top"><span class="fp-num fp-kill">catastrophic loss during black swans</span></div>
+    <div class="fp-title">Regime shift blindness at critical moments</div>
+    <div class="fp-body">NN3 detects 4 regime states — but a black swan (COVID crash, SVB collapse, Flash Crash 2010) is state 5 that the model has never seen. The regime detector confidently outputs "sideways/low volatility" for 2–3 minutes while the market is already down 8%. NN5 keeps allocating normally into a waterfall.</div>
+    <div class="fp-fix">Fix: hard Rust kill switch on VIX spike above 3σ, VWAP deviation circuit breaker, correlated asset stress monitor</div>
+  </div>
+  <div class="fp-card" onclick="sendPrompt('What are the regulatory requirements for running an algorithmic trading system as a business in India and globally?')">
+    <div class="fp-top"><span class="fp-num fp-reg">overlooked until it is too late</span></div>
+    <div class="fp-title">Regulatory compliance — SEBI, SEC, MiFID II</div>
+    <div class="fp-body">In India, running algorithmic trading for others requires SEBI algo trading registration. In the US, managing others' money requires RIA registration. In Europe, MiFID II governs algorithmic systems. Operating without compliance exposes you to criminal liability. This shuts down more promising systems than technical failure does.</div>
+    <div class="fp-fix">Fix: begin regulatory consultation at MVP stage, not after launch. Costs ₹2–5L in India, much more later</div>
+  </div>
+</div>
+
+<div class="fp-section-label">Data and infrastructure failures — silent killers</div>
+<div class="fp-grid">
+  <div class="fp-card" onclick="sendPrompt('What is data quality failure in HFT systems and what are the consequences of bad tick data?')">
+    <div class="fp-top"><span class="fp-num fp-blind">ignored by 90% of builders</span></div>
+    <div class="fp-title">Garbage-in data quality — silent P&L drain</div>
+    <div class="fp-body">Free and low-cost data APIs (Alpha Vantage, Yahoo Finance) have documented issues: missing ticks, duplicate rows, incorrect corporate actions, stale quotes during low-liquidity periods. A single corrupted tick that spikes RSI to 100 will make NN1 issue a violent sell signal on perfectly normal data. Nobody checks data quality post-deployment.</div>
+    <div class="fp-fix">Fix: Rust-side data validation layer — outlier detection, timestamp gap alerts, cross-source consensus checks</div>
+  </div>
+  <div class="fp-card" onclick="sendPrompt('What is WebSocket disconnection handling and why does it cause silent data gaps in live trading?')">
+    <div class="fp-top"><span class="fp-num fp-blind">silent failure — nobody notices</span></div>
+    <div class="fp-title">Silent WebSocket gaps causing stale features</div>
+    <div class="fp-body">A WebSocket connection drops for 4 seconds during a volatile period. Rust reconnects. But the order book and feature window now have a 4-second gap in the middle. RSI computed on this gapped series is mathematically wrong. The model doesn't know the data is stale — it confidently acts on corrupted features. Happens multiple times per day.</div>
+    <div class="fp-fix">Fix: Rust timestamp gap detector — mark features as STALE if last tick older than threshold, block order submission until fresh</div>
+  </div>
+</div>
