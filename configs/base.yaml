@@ -1,0 +1,208 @@
+# FinSentNet-C — base configuration.
+# ===================================
+# This file is the operational half of SPEC.md. Every constant that appears in the
+# paper must appear here, and tests/test_spec_matches_config.py asserts the two agree.
+# Never hard-code a value in Python that lives in this file.
+
+meta:
+  name: finsentnet_c
+  version: "0.3.0"
+  seed_list: [0, 1, 2, 3, 4]
+  deterministic: true
+
+data:
+  universe:
+    mode: pit_liquidity          # {pit_liquidity, pit_index, fixed}
+    n_names: 400
+    rebalance: monthly
+    min_price: 5.0
+    min_adv_usd: 5.0e6
+    lookback_days: 60            # ADV/liquidity screen lookback
+  period:
+    start: "2016-01-01"
+    end: "2025-06-30"
+  prices:
+    source: yahoo                # {yahoo, crsp, parquet}
+    adjust: total_return
+    include_delisted: true
+  news:
+    source: fnspid               # {fnspid, edt, stocknet, parquet}
+    max_headlines_per_day: 8     # K
+    lookback_hours: 72
+    min_lag_hours: 24            # publication -> decision open
+    encoder: "ProsusAI/finbert"  # exact checkpoint, stated in the paper
+    embedding_dim: 768
+    cache: "data/cache/finbert_cls_fp16.parquet"
+    n_sources: 32
+  features:
+    lookback_L: 60
+    n_features: 12
+    list:
+      - ret_1
+      - ret_5
+      - ret_21
+      - mom_12_1
+      - rev_5
+      - ewma_vol_20
+      - atr14_norm
+      - gk_vol_20
+      - macd_hist_norm
+      - rsi_14
+      - bb_pctb
+      - dollar_vol_log
+    cross_sectional_rank: true
+    winsorize: 0.01
+  labels:
+    horizon_h: 5                 # PRIMARY. h=1 and h=21 are robustness rows.
+    method: vol_scaled_band      # {vol_scaled_band, triple_barrier}
+    k_band: 0.6
+    vol_span: 60                 # EWMA span for the causal volatility estimate
+    triple_barrier:
+      pt_mult: 2.0
+      sl_mult: 2.0
+      vertical_days: 5
+    convention:
+      DOWN: 0
+      NEUTRAL: 1
+      UP: 2
+  splits:
+    scheme: purged_walk_forward
+    train_min_years: 3
+    train_mode: expanding        # {expanding, rolling}
+    inner_val_months: 6
+    test_months: 6
+    refit_every_months: 6        # -> 18 folds over the configured period
+    purge_days: 5                # == labels.horizon_h
+    embargo_pct: 0.01
+  weights:
+    use_average_uniqueness: true
+
+model:
+  d_model: 128
+  price:
+    conv_kernels: [3, 7, 15]
+    conv_channels: 32
+    tcn:
+      blocks: 4
+      dilations: [1, 2, 4, 8]
+      kernel: 3
+      channels: 64
+      dropout: 0.1
+    gru:
+      hidden: 128
+      layers: 1
+      bidirectional: false
+  text:
+    emb_dim: 768
+    proj_dim: 128
+    recency_dim: 16
+    source_emb_dim: 8
+    attn_hidden: 64
+    pooling: attention
+    null_embedding: true
+  fusion:
+    blocks: 1
+    heads: 4
+    gate: elementwise
+    modality_dropout:
+      text: 0.15
+      price: 0.15
+  heads:
+    n_classes: 3
+    hidden: 128
+    dropout: 0.1
+    heteroscedastic: true
+    logvar_clamp: [-10.0, 2.0]
+  param_budget:
+    expected_trainable: 448453   # realised count, not an estimate; see SPEC.md 3.5
+    tolerance_pct: 2.0
+
+loss:
+  lambda_reg: 1.0
+  lambda_cal: 0.5
+  lambda_rank: 0.2
+  class_weights: inverse_frequency   # NOT (0.3, 0.4, 0.3)
+  focal:
+    enabled: false
+    gamma: 2.0
+  label_smoothing: 0.0
+  sigma_warmup_epochs: 3
+  mmce_kernel_width: 0.4
+
+train:
+  optimizer: adamw
+  lr: 3.0e-4
+  weight_decay: 1.0e-2
+  betas: [0.9, 0.98]
+  warmup_pct: 0.05
+  epochs: 30
+  patience: 8                    # ONE value. Paper, figure and code all say 8.
+  dates_per_batch: 16            # date-batched loader
+  grad_clip: 1.0
+  ema_decay: 0.999
+  precision: bf16
+  early_stop_metric: inner_val_nll   # NOT Sharpe. No triple-dipping.
+
+calibration:
+  method: vector_scaling         # {vector_scaling, temperature, none}
+  fit_on: inner_val
+  n_bins: 15
+  max_iter: 200
+  report: [ece, mce, brier, nll, reliability]
+
+conformal:
+  score: aps                     # {aps, lac}
+  alphas: [0.05, 0.10, 0.20]
+  adaptive:
+    enabled: true
+    gamma: 0.005
+
+decision:
+  score: mu_hat                  # {mu_hat, p_up_minus_p_down}
+  gate_on_singleton: true
+  kelly:
+    kappa: 0.25
+    f_max: 0.10
+  portfolio:
+    covariance: ledoit_wolf
+    risk_aversion: 5.0
+    turnover_penalty: 0.001
+    gross_leverage_max: 2.0
+    dollar_neutral: true
+    long_short_quantile: 0.1     # decile
+  costs:
+    default_bps: 10.0
+    impact_eta: 0.5
+    sweep_bps: [0.0, 2.0, 5.0, 10.0, 15.0, 20.0, 25.0]
+  rebalance_days: 5              # weekly; daily rebalancing is uninvestable after costs
+  regime:
+    n_states: 3
+    max_iter: 200
+
+eval:
+  primary: [rank_ic, icir, net_sharpe_10bps, ece, coverage]
+  periods_per_year: 252
+  bootstrap:
+    type: stationary
+    block_mean: 10
+    n_resamples: 5000
+    ci_level: 0.95
+  dm_test:
+    hac_lags: 10
+  n_configs_evaluated: 200       # declared, and fed to the Deflated Sharpe Ratio
+  risk_free_rate: 0.0
+
+augment:
+  gan:
+    enabled: false               # appendix / ablation only
+    generate: ohlcv_only         # indicators are recomputed deterministically
+    condition_on: hmm_regime
+    n_critic: 5
+    lambda_gp: 10.0
+    synthetic_fraction: 0.0
+
+paths:
+  data_root: "data"
+  cache_root: "data/cache"
+  runs_root: "runs"
+  paper_root: "paper"
