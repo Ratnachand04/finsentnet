@@ -1,0 +1,43 @@
+# FinSentNet-C research stack.
+#
+# The split matters and is deliberate: the data, evaluation and decision layers -- purged
+# splits, metrics, significance tests, calibration, conformal prediction, the backtest and
+# the growth-rate theory -- depend only on the core block below. The entire scientific
+# argument of the paper is therefore reproducible without a deep-learning install, which
+# is the difference between a referee being able to check the claims and having to take
+# them on trust.
+
+# --- core: everything the paper's claims are computed with ---------------------------
+numpy>=1.24
+pandas>=2.0
+scipy>=1.10
+pyyaml>=6.0
+matplotlib>=3.7
+
+# --- network: only needed to train FinSentNet-C itself -------------------------------
+# torch>=2.1
+
+# --- text: only needed to build the offline FinBERT embedding cache ------------------
+# Run once; training reads the cached vectors, never the encoder.
+# transformers>=4.35
+# tokenizers>=0.15
+
+# --- data ingestion ------------------------------------------------------------------
+# yfinance>=0.2
+# pyarrow>=14.0
+
+# --- exact constrained portfolio QP --------------------------------------------------
+# Optional. Without it, finsent.decision.portfolio falls back to a projected proximal
+# gradient method, so results remain reproducible either way.
+# cvxpy>=1.4
+# osqp>=0.6
+
+# --- indicator parity ----------------------------------------------------------------
+# Enables tests/test_indicators_parity.py, which verifies every hand-rolled indicator to
+# 1e-6 against the reference. The paper may not claim that parity unless this is
+# installed and the test has run.
+# TA-Lib>=0.4.28
+
+# --- development ---------------------------------------------------------------------
+pytest>=7.4
+ruff>=0.1
