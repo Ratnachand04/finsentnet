@@ -1,0 +1,891 @@
+# HFT Quant Intelligence System — Complete VS Code Copilot Prompt
+
+> Copy everything below this line and paste it into GitHub Copilot Chat
+> in VS Code (Ctrl+Shift+I) or into Copilot Workspace.
+
+---
+
+```
+Create a complete, production-ready High-Frequency Quantitative Trading Intelligence
+System called "QuantPhysics" as a Rust + Python hybrid project using PyO3. Build every
+file from scratch with full implementation — not stubs or TODOs. The system has two
+phases. Build Phase 1 completely first, then Phase 2.
+
+════════════════════════════════════════════════════════════
+PROJECT STRUCTURE — create exactly this directory tree
+════════════════════════════════════════════════════════════
+
+quantphysics/
+├── Cargo.toml                          ← Rust workspace root
+├── Cargo.lock
+├── pyproject.toml                      ← maturin build config
+├── .env.example                        ← all API key placeholders
+├── README.md                           ← full setup instructions
+├── docker-compose.yml                  ← PostgreSQL + Redis + TimescaleDB
+├── Makefile                            ← build, test, run shortcuts
+│
+├── src/                                ← Rust crate root
+│   ├── lib.rs                          ← PyO3 module entry + all exports
+│   ├── ingestion/
+│   │   ├── mod.rs
+│   │   ├── websocket.rs                ← tokio-tungstenite multi-exchange
+│   │   ├── rest_client.rs              ← reqwest async REST polling
+│   │   └── tick.rs                     ← Tick struct + serde deserialization
+│   ├── orderbook/
+│   │   ├── mod.rs
+│   │   ├── book.rs                     ← BTreeMap L2 book + RwLock
+│   │   └── store.rs                    ← DashMap per-symbol book store
+│   ├── features/
+│   │   ├── mod.rs
+│   │   ├── engine.rs                   ← RSI, MACD, Bollinger, EMA, ATR
+│   │   └── vector.rs                   ← FeatureVector struct
+│   ├── risk/
+│   │   ├── mod.rs
+│   │   ├── var.rs                      ← Monte Carlo VaR computation
+│   │   ├── drawdown.rs                 ← max drawdown tracker
+│   │   └── limits.rs                   ← hard limit enforcement
+│   ├── execution/
+│   │   ├── mod.rs
+│   │   └── router.rs                   ← order routing + Almgren-Chriss
+│   ├── geospatial/                     ← Phase 2
+│   │   ├── mod.rs
+│   │   ├── ais_processor.rs            ← AIS stream parser + MMSI lookup
+│   │   ├── adsb_processor.rs           ← ADS-B OpenSky stream parser
+│   │   ├── gpci.rs                     ← DBSCAN port congestion index
+│   │   ├── cdice.rs                    ← draft → commodity inventory
+│   │   └── geo_store.rs               ← DashMap geospatial state
+│   └── bridge/
+│       ├── mod.rs
+│       ├── market_bridge.rs            ← PyO3 market data exports
+│       └── geo_bridge.rs              ← PyO3 geospatial exports (Phase 2)
+│
+├── python/
+│   ├── __init__.py
+│   ├── config.py                       ← all settings from .env
+│   │
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── nn1_price.py                ← LSTM + MultiHead Attention
+│   │   ├── nn2_sentiment.py            ← FinBERT fine-tuning + inference
+│   │   ├── nn3_regime.py               ← 1D-CNN + GaussianHMM
+│   │   ├── nn4_risk.py                 ← MLP + Monte Carlo Dropout
+│   │   ├── nn5_portfolio.py            ← PPO RL agent (stable-baselines3)
+│   │   └── nn6_pfcat.py               ← Phase 2 Cross-Modal Attention
+│   │
+│   ├── data/
+│   │   ├── __init__.py
+│   │   ├── fetcher.py                  ← aiohttp async news/Reddit/EDGAR
+│   │   ├── ais_fetcher.py             ← Phase 2 AISHub + MarineTraffic
+│   │   ├── adsb_fetcher.py            ← Phase 2 OpenSky Network
+│   │   ├── eia_fetcher.py             ← Phase 2 EIA oil + FRED macro
+│   │   ├── sec_scraper.py             ← Phase 2 10-K supply chain NLP
+│   │   └── preprocessor.py            ← normalization + scaling
+│   │
+│   ├── graphs/                         ← Phase 2
+│   │   ├── __init__.py
+│   │   ├── corporate_graph.py          ← build company relationship graph
+│   │   └── scspn.py                   ← GNN epidemic propagation
+│   │
+│   ├── engine/
+│   │   ├── __init__.py
+│   │   ├── orchestrator.py             ← asyncio parallel NN runner
+│   │   ├── decision.py                 ← signal synthesis + final output
+│   │   └── disagreement.py            ← inter-NN conflict detector
+│   │
+│   ├── training/
+│   │   ├── __init__.py
+│   │   ├── trainer.py                  ← PyTorch Lightning base trainer
+│   │   ├── walk_forward.py             ← walk-forward CV splits
+│   │   ├── curriculum.py              ← curriculum learning scheduler
+│   │   └── hyperopt.py                ← Optuna search spaces
+│   │
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── server.py                   ← FastAPI app + lifespan startup
+│   │   ├── routes/
+│   │   │   ├── __init__.py
+│   │   │   ├── analyze.py              ← POST /analyze investor request
+│   │   │   ├── portfolio.py            ← GET /portfolio current state
+│   │   │   ├── signals.py              ← GET /signals live feed
+│   │   │   └── health.py               ← GET /health system status
+│   │   ├── schemas.py                  ← Pydantic request/response models
+│   │   └── auth.py                     ← JWT auth middleware
+│   │
+│   └── storage/
+│       ├── __init__.py
+│       ├── timescale.py                ← TimescaleDB tick history
+│       ├── redis_cache.py              ← Redis NN output cache
+│       └── kafka_producer.py           ← Kafka event streaming
+│
+└── tests/
+    ├── rust/
+    │   ├── test_orderbook.rs
+    │   ├── test_features.rs
+    │   └── test_risk.rs
+    └── python/
+        ├── test_nn1.py
+        ├── test_orchestrator.py
+        └── test_api.py
+
+
+════════════════════════════════════════════════════════════
+FILE 1: Cargo.toml — complete with all dependencies
+════════════════════════════════════════════════════════════
+
+[package]
+name = "quantphysics"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "quantphysics"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.21", features = ["extension-module"] }
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
+futures-util = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ta = "0.5"
+crossbeam = "0.8"
+dashmap = "5"
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1"
+once_cell = "1"
+statrs = "0.16"
+ndarray = "0.15"
+rayon = "1.8"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+geo = "0.27"                    # geospatial types for Phase 2
+rstar = "0.11"                  # R-tree spatial index for DBSCAN
+uuid = { version = "1", features = ["v4"] }
+tokio-stream = "0.1"
+bytes = "1"
+url = "2"
+
+[build-dependencies]
+pyo3-build-config = "0.21"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
+panic = "abort"
+
+
+════════════════════════════════════════════════════════════
+FILE 2: pyproject.toml
+════════════════════════════════════════════════════════════
+
+[build-system]
+requires = ["maturin>=1.4,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "quantphysics"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "torch>=2.2.0",
+    "torchvision",
+    "transformers>=4.38.0",
+    "datasets",
+    "tokenizers",
+    "stable-baselines3>=2.2.1",
+    "hmmlearn>=0.3.2",
+    "lightning>=2.2.0",
+    "optuna>=3.5.0",
+    "wandb>=0.16.0",
+    "fastapi>=0.109.0",
+    "uvicorn[standard]",
+    "aiohttp>=3.9.3",
+    "praw>=7.7.0",
+    "polars>=0.20.0",
+    "redis>=5.0.1",
+    "asyncpg>=0.29.0",
+    "psycopg2-binary",
+    "confluent-kafka>=2.3.0",
+    "python-jose[cryptography]",
+    "passlib[bcrypt]",
+    "pydantic>=2.5.0",
+    "pydantic-settings",
+    "python-dotenv",
+    "torch-geometric",
+    "numpy>=1.26.0",
+    "pandas>=2.1.0",
+    "scikit-learn>=1.4.0",
+    "pytest>=7.4.0",
+    "pytest-asyncio",
+    "httpx",
+]
+
+[tool.maturin]
+python-source = "python"
+module-name = "quantphysics._core"
+features = ["pyo3/extension-module"]
+
+
+════════════════════════════════════════════════════════════
+FILE 3: src/lib.rs — PyO3 module root, complete implementation
+════════════════════════════════════════════════════════════
+
+Implement the full PyO3 module with these exported functions:
+
+#[pyfunction] start_engine(symbols: Vec<String>, ws_endpoints: HashMap<String,String>) -> PyResult<()>
+  — spawns Tokio runtime on background thread, starts all WebSocket ingestion tasks,
+    starts feature computation loop, starts GPCI + CDICE geospatial processing (Phase 2)
+
+#[pyfunction] get_features_batch(symbols: Vec<String>) -> PyResult<Vec<Vec<f64>>>
+  — returns [N_symbols × 12_features] as Vec<Vec<f64>> in ONE call (no per-symbol loop)
+  — features: [price, rsi, ema_fast, ema_slow, macd_val, macd_sig, bb_upper, bb_mid,
+               bb_lower, order_imbalance, volume_ratio, spread]
+
+#[pyfunction] get_feature_windows_batch(symbols: Vec<String>, window: usize) -> PyResult<Vec<Vec<Vec<f64>>>>
+  — returns [N_symbols × window × 12] sliding window for LSTM input, ONE call
+
+#[pyfunction] get_orderbook_batch(symbols: Vec<String>, levels: usize) -> PyResult<Vec<(Vec<f64>, Vec<f64>)>>
+  — returns list of (bid_prices, ask_prices) per symbol
+
+#[pyfunction] get_physical_signals_batch(symbols: Vec<String>) -> PyResult<HashMap<String, Vec<f64>>>
+  — Phase 2: returns per-symbol physical world signals
+  — [cdice_crude, cdice_lng, cdice_iron, cdice_grain, gpci_origin_port, gpci_dest_port,
+     adsb_anomaly_score, scspn_contagion_coefficient]
+
+#[pyfunction] submit_order(symbol: String, side: String, quantity: f64, max_drawdown_pct: f64, user_id: String) -> PyResult<String>
+  — validates against Rust risk engine hard limits
+  — applies Almgren-Chriss optimal execution slicing
+  — returns "ACCEPTED:{order_id}" or "REJECTED:{reason}"
+
+#[pyfunction] get_system_health() -> PyResult<HashMap<String, serde_json::Value>>
+  — returns connected_exchanges, symbols_tracked, ticks_per_second, feature_lag_ms,
+    geospatial_vessels_tracked, last_gpci_update, risk_violations_last_hour
+
+Use once_cell::sync::Lazy for all global state stores.
+Use tokio::sync::RwLock for order books.
+Use crossbeam::channel for tick pipeline.
+Use dashmap::DashMap for all concurrent key-value stores.
+
+
+════════════════════════════════════════════════════════════
+FILE 4: src/ingestion/websocket.rs — complete implementation
+════════════════════════════════════════════════════════════
+
+Implement WebSocketIngester struct with:
+- symbol: String
+- exchange: ExchangeType enum (Binance, NSE, AlphaVantage, Custom)
+- ws_url: String  
+- sender: crossbeam::channel::Sender<Tick>
+- reconnect_delay_ms: u64
+
+Implement async fn run(&self) with:
+- exponential backoff reconnection (1s → 2s → 4s → max 30s)
+- heartbeat/ping every 30s to prevent timeout
+- message routing: parse JSON → deserialize to Tick → send to channel
+- tracing::info! on connect, tracing::error! on disconnect
+
+Implement async fn spawn_all(configs: Vec<IngesterConfig>, tx: Sender<Tick>)
+- spawns one tokio::task per exchange/symbol
+- returns JoinSet<()> for lifecycle management
+
+Tick struct must derive: Debug, Clone, Serialize, Deserialize
+Fields: symbol, price, volume, bid, ask, timestamp_ms, exchange, sequence_num
+
+
+════════════════════════════════════════════════════════════
+FILE 5: src/orderbook/book.rs — complete L2 order book
+════════════════════════════════════════════════════════════
+
+Implement OrderBook struct:
+- bids: Arc<RwLock<BTreeMap<OrderedFloat<f64>, f64>>>
+- asks: Arc<RwLock<BTreeMap<OrderedFloat<f64>, f64>>>
+- last_update_ms: AtomicU64
+
+Implement methods:
+- update_bid(price: f64, qty: f64) — insert if qty>0, remove if qty==0
+- update_ask(price: f64, qty: f64)
+- top_bids(n: usize) -> Vec<(f64, f64)> — highest n bids descending
+- top_asks(n: usize) -> Vec<(f64, f64)> — lowest n asks ascending
+- mid_price() -> Option<f64>
+- spread() -> Option<f64>
+- order_imbalance(depth: usize) -> f64  ← (bid_vol - ask_vol) / (bid_vol + ask_vol)
+- is_stale(max_age_ms: u64) -> bool
+
+
+════════════════════════════════════════════════════════════
+FILE 6: src/features/engine.rs — full technical indicator engine
+════════════════════════════════════════════════════════════
+
+Implement FeatureEngine struct per symbol:
+- Uses ta crate: RelativeStrengthIndex(14), ExponentialMovingAverage(12),
+  ExponentialMovingAverage(26), BollingerBands(20, 2.0), MACD(12, 26, 9), AverageTrueRange(14)
+- price_history: VecDeque<f64> (capacity 200)
+- volume_history: VecDeque<f64> (capacity 20)
+- All indicators implement ta::Next trait
+
+Implement fn update(&mut self, tick: &Tick, imbalance: f64) -> Option<FeatureVector>
+- Returns None until warm-up period complete (200 ticks)
+- Returns Some(FeatureVector) after warmup
+
+FeatureVector fields (all f64):
+price, rsi, ema_fast, ema_slow, macd_value, macd_signal, macd_histogram,
+bb_upper, bb_middle, bb_lower, bb_percent_b, atr, order_imbalance,
+volume_ratio, spread, price_velocity, price_acceleration
+
+Implement FeatureHistory struct:
+- ring buffer of last 200 FeatureVectors per symbol
+- fn get_window(&self, size: usize) -> Vec<&FeatureVector>
+- Uses VecDeque<FeatureVector> internally
+
+
+════════════════════════════════════════════════════════════
+FILE 7: src/geospatial/gpci.rs — Phase 2 GPCI algorithm (Novel Method 3)
+════════════════════════════════════════════════════════════
+
+Implement the Geospatial Port Congestion Index algorithm:
+
+PortZone struct:
+- port_code: String (UN/LOCODE)
+- name: String
+- anchorage_bbox: BoundingBox  ← lat/lon rectangle
+- berth_bbox: BoundingBox
+- baseline_wait_times: VecDeque<f64>  ← 90-day rolling
+
+VesselState struct:
+- mmsi: u32
+- position: (f64, f64)  ← lat, lon
+- speed_knots: f64
+- heading: f64
+- timestamp_ms: u64
+- entered_anchorage_at: Option<u64>
+
+Implement fn compute_gpci(port: &PortZone, vessels: &[VesselState]) -> PortCongestionIndex:
+1. Filter vessels inside port anchorage_bbox with speed < 2.0 knots (anchored/waiting)
+2. Run DBSCAN clustering (epsilon=0.02 degrees, min_samples=3) using rstar R-tree
+3. Count anchored_vessel_count from clusters
+4. Compute wait_times: for vessels with entered_anchorage_at set, (now - entered) / 3600.0 hours
+5. Compute throughput_index: vessels_departed_last_hour / max(vessels_arrived_last_hour, 1)
+6. Compute congestion_z_score: (current_wait_median - baseline_median) / baseline_std
+7. Normalize to congestion_percentile [0.0, 1.0] using 90-day baseline
+Return PortCongestionIndex { port_code, anchored_count, median_wait_hours,
+                              throughput_index, congestion_percentile, z_score, timestamp_ms }
+
+
+════════════════════════════════════════════════════════════
+FILE 8: src/geospatial/cdice.rs — Phase 2 CDICE algorithm (Novel Method 1)
+════════════════════════════════════════════════════════════
+
+Implement Cargo Draft Inference Commodity Estimation:
+
+VesselClass enum: VLCC, Suezmax, Aframax, Panamax, Handymax, LNG_Carrier,
+                  Bulk_Capesize, Bulk_Panamax, Container_Large, Container_Small
+
+VesselClassSpec struct:
+- empty_draft_m: f64        ← draft when empty
+- max_draft_m: f64          ← draft when fully loaded
+- max_cargo_tonnes: f64
+- primary_commodity: CommodityType
+
+CommodityType enum: CrudeOil, LNG, IronOre, Grain, Coal, GeneralCargo
+
+Implement fn estimate_cargo(vessel_class: &VesselClassSpec, current_draft: f64) -> CargoEstimate:
+- loaded_fraction = (current_draft - empty_draft) / (max_draft - empty_draft)
+- loaded_fraction = loaded_fraction.clamp(0.0, 1.0)
+- estimated_tonnes = loaded_fraction * max_cargo_tonnes
+- Return CargoEstimate { loaded_fraction, estimated_tonnes, commodity, confidence }
+- confidence = 1.0 - (0.15 * (1.0 - loaded_fraction.abs() * 2.0 - 1.0).abs())
+  ← lower confidence near 50% loaded (ambiguous)
+
+Implement CommodityInventoryTracker:
+- Per-commodity rolling delta aggregator
+- fn update(&mut self, vessel_mmsi: u32, estimate: CargoEstimate, direction: FlowDirection)
+  direction: Loading | Unloading (inferred from port entry/exit and speed change)
+- fn get_inventory_signal(&self, commodity: CommodityType) -> InventorySignal
+  returns: { commodity, 7day_delta_tonnes, 30day_delta_tonnes, z_score_vs_90d_baseline,
+             pressure_signal: f64 }  ← negative = surplus → bearish, positive = deficit → bullish
+
+
+════════════════════════════════════════════════════════════
+FILE 9: python/models/nn1_price.py — complete LSTM + Transformer
+════════════════════════════════════════════════════════════
+
+Implement PricePredictionModel(pl.LightningModule):
+
+Architecture:
+- input_size: 17 features (full FeatureVector)
+- lstm: nn.LSTM(input_size=17, hidden_size=256, num_layers=3, dropout=0.2, batch_first=True)
+- attention: nn.MultiheadAttention(embed_dim=256, num_heads=8, dropout=0.1)
+- layer_norm: nn.LayerNorm(256)
+- fc_direction: nn.Linear(256, 3)     ← [strong_buy, hold, strong_sell]
+- fc_magnitude: nn.Linear(256, 1)     ← predicted price change %
+- fc_confidence: nn.Linear(256, 1)    ← prediction confidence [0,1]
+- dropout: nn.Dropout(0.2)
+
+forward(x: Tensor[batch, seq_len=60, features=17]) -> PredictionOutput:
+1. lstm_out, _ = self.lstm(x)          ← [batch, 60, 256]
+2. attn_out, attn_weights = self.attention(lstm_out, lstm_out, lstm_out)
+3. fused = self.layer_norm(lstm_out + attn_out)   ← residual
+4. pooled = fused[:, -1, :]            ← last timestep
+5. direction = F.softmax(fc_direction(pooled), dim=-1)
+6. magnitude = torch.tanh(fc_magnitude(pooled))
+7. confidence = torch.sigmoid(fc_confidence(pooled))
+Return PredictionOutput(direction, magnitude, confidence, attn_weights)
+
+Loss: 0.5 * cross_entropy(direction, true_dir) + 0.3 * mse(magnitude, true_mag)
+      + 0.2 * bce(confidence, was_correct.float())
+
+Implement training_step, validation_step, configure_optimizers (AdamW, lr=1e-4, cosine schedule)
+Implement @classmethod load(path) and save(path)
+Implement inference(feature_window: np.ndarray) -> dict returning all outputs as Python dicts
+
+
+════════════════════════════════════════════════════════════
+FILE 10: python/models/nn2_sentiment.py — FinBERT fine-tuning
+════════════════════════════════════════════════════════════
+
+Implement SentimentAnalyzer(pl.LightningModule):
+
+Base model: "ProsusAI/finbert" from HuggingFace
+Architecture:
+- bert: AutoModel.from_pretrained("ProsusAI/finbert")
+- classifier: nn.Sequential(
+    nn.Linear(768, 256), nn.GELU(), nn.Dropout(0.1),
+    nn.Linear(256, 64), nn.GELU(), nn.Dropout(0.1),
+    nn.Linear(64, 1)    ← scalar sentiment [-1, 1]
+  )
+- tokenizer: AutoTokenizer.from_pretrained("ProsusAI/finbert")
+
+Implement analyze_texts(texts: List[str]) -> List[SentimentScore]:
+- Batch tokenize (max_length=512, truncation=True, padding=True)
+- Run through bert + classifier with torch.no_grad()
+- Return List[SentimentScore(score=float, confidence=float, text=str)]
+
+Implement analyze_company(symbol: str, news_texts: List[str],
+                           earnings_texts: List[str]) -> CompanySentiment:
+- Weight news texts by recency: weight = exp(-hours_ago / 24.0)
+- Earnings texts get 2x weight multiplier
+- Return CompanySentiment(symbol, weighted_score, confidence, source_count, timestamp)
+
+Freeze bert layers 0-8 during initial fine-tuning (only train layers 9-11 + classifier)
+
+
+════════════════════════════════════════════════════════════
+FILE 11: python/models/nn3_regime.py — CNN + HMM regime detector
+════════════════════════════════════════════════════════════
+
+Implement RegimeDetector combining PyTorch CNN with hmmlearn HMM:
+
+CNN Feature Extractor (nn.Module):
+- conv1: nn.Conv1d(in_channels=17, out_channels=64, kernel_size=5, padding=2)
+- conv2: nn.Conv1d(64, 128, kernel_size=3, padding=1)
+- conv3: nn.Conv1d(128, 64, kernel_size=3, padding=1)
+- batch_norm after each conv
+- global_avg_pool → [batch, 64]
+- fc: nn.Linear(64, 32)  ← 32-dim regime feature vector
+
+HMM Layer:
+- model: GaussianHMM(n_components=4, covariance_type="full", n_iter=100)
+- 4 states: BULL_TREND=0, BEAR_TREND=1, SIDEWAYS=2, HIGH_VOL_CRISIS=3
+
+Implement fit_hmm(feature_sequences: np.ndarray):  ← called during training
+Implement predict_regime(feature_window: np.ndarray) -> RegimePrediction:
+  1. Extract CNN features from window
+  2. Run HMM.predict() to get most likely state
+  3. Run HMM.predict_proba() for state probabilities
+  4. Return RegimePrediction(state, state_name, probabilities, confidence)
+
+RegimeWeights used by orchestrator to scale other NN signals:
+  BULL_TREND:       {"nn1_weight": 1.2, "risk_budget": 1.0, "sentiment_weight": 1.1}
+  BEAR_TREND:       {"nn1_weight": 0.6, "risk_budget": 0.5, "sentiment_weight": 1.3}
+  SIDEWAYS:         {"nn1_weight": 0.8, "risk_budget": 0.7, "sentiment_weight": 0.9}
+  HIGH_VOL_CRISIS:  {"nn1_weight": 0.3, "risk_budget": 0.2, "sentiment_weight": 1.5}
+
+
+════════════════════════════════════════════════════════════
+FILE 12: python/models/nn4_risk.py — MLP with Monte Carlo Dropout
+════════════════════════════════════════════════════════════
+
+Implement RiskAssessor(pl.LightningModule):
+
+Architecture:
+- input_dim: 24 features (portfolio_weights×N + correlations + vix + macro)
+- layers: nn.Sequential(
+    nn.Linear(input_dim, 256), nn.ReLU(), nn.Dropout(0.3),
+    nn.Linear(256, 128), nn.ReLU(), nn.Dropout(0.3),
+    nn.Linear(128, 64), nn.ReLU(), nn.Dropout(0.3),
+    nn.Linear(64, 4)   ← [var_95, var_99, max_drawdown, tail_risk]
+  )
+
+CRITICAL: All Dropout layers must remain active at inference time.
+Implement mc_dropout_inference(x: Tensor, n_samples: int = 100) -> RiskEstimate:
+  1. Set all dropout layers to training=True even during eval
+  2. Run n_samples forward passes
+  3. predictions = stack of n_samples outputs
+  4. mean_risk = predictions.mean(dim=0)
+  5. uncertainty = predictions.std(dim=0)   ← epistemic uncertainty
+  6. Return RiskEstimate(var_95=mean[0], var_99=mean[1], max_drawdown=mean[2],
+                         tail_risk=mean[3], uncertainty=uncertainty,
+                         high_uncertainty=uncertainty.mean() > threshold)
+
+Position sizing rule: if high_uncertainty → multiply all position sizes by 0.3
+                      else → scale by (1 - uncertainty.mean().item())
+
+
+════════════════════════════════════════════════════════════
+FILE 13: python/models/nn5_portfolio.py — PPO RL agent
+════════════════════════════════════════════════════════════
+
+Implement PortfolioOptimizer using stable-baselines3:
+
+Custom Gym Environment QuantPhysicsEnv(gym.Env):
+- observation_space: Box(low=-inf, high=inf, shape=(state_dim,))
+  state_dim = num_symbols * (nn1_outputs=5 + nn2_outputs=2 + nn6_outputs=8)
+             + nn3_outputs=4 + nn4_outputs=8 + user_prefs=4
+- action_space: Box(low=0, high=1, shape=(num_symbols + 1,))  ← allocations + cash
+  actions normalized via softmax to sum to 1.0
+
+Multi-objective reward function:
+  sharpe = compute_rolling_sharpe(portfolio_returns, window=20)
+  calmar = compute_calmar_ratio(returns, max_drawdown)
+  turnover_penalty = -0.001 * sum(abs(new_weights - old_weights))
+  risk_penalty = -10.0 * float(risk_violation)
+  reward = 0.4*sharpe + 0.3*calmar + 0.2*turnover_penalty + 0.1*reward_from_pnl
+           + risk_penalty
+
+Disagreement detection (feeds into state):
+  disagreement_score = std([nn1_direction, nn2_sentiment_normalized,
+                            nn3_regime_bull_prob, 1.0 - nn4_risk_normalized])
+  if disagreement_score > 0.4: scale all allocations by 0.5
+
+PPO config:
+  policy="MultiInputPolicy", learning_rate=3e-4, n_steps=2048,
+  batch_size=64, n_epochs=10, gamma=0.99, gae_lambda=0.95,
+  clip_range=0.2, ent_coef=0.01, vf_coef=0.5, max_grad_norm=0.5
+
+Implement train(total_timesteps: int, log_path: str)
+Implement predict(state: np.ndarray) -> Tuple[np.ndarray, dict]  ← allocations + info
+
+
+════════════════════════════════════════════════════════════
+FILE 14: python/models/nn6_pfcat.py — Phase 2 Cross-Modal Attention (Novel Method 4)
+════════════════════════════════════════════════════════════
+
+Implement PhysicalFinancialCrossModalAttention(pl.LightningModule):
+This is the PFCAT architecture — the core patent-worthy Phase 2 model.
+
+Architecture:
+- market_encoder: nn.Linear(17, 128)      ← encodes microstructure features to Q
+- physical_encoder: nn.Linear(8, 128)     ← encodes physical world signals to K,V
+- cross_attention: nn.MultiheadAttention(embed_dim=128, num_heads=8, dropout=0.1)
+  Q = market_encoder(microstructure)       ← [batch, seq=1, 128]
+  K = physical_encoder(physical_sequence) ← [batch, time_steps=48, 128]
+  V = physical_encoder(physical_sequence) ← [batch, time_steps=48, 128]
+  NOTE: physical_sequence is 48 timesteps of hourly physical data (2-day window)
+        market features are current state only
+  This architecture lets the model learn: "given current market state,
+  which physical world event in the past 48 hours is most relevant?"
+- layer_norm: nn.LayerNorm(128)
+- fusion_head: nn.Sequential(
+    nn.Linear(128 + 17, 256), nn.GELU(), nn.Dropout(0.1),
+    nn.Linear(256, 64), nn.GELU(),
+    nn.Linear(64, 8)   ← 8-dim physical world signal vector per symbol
+  )
+
+forward(microstructure: Tensor[batch, 17],
+        physical_history: Tensor[batch, 48, 8]) -> PFCATOutput:
+  q = market_encoder(microstructure).unsqueeze(1)    ← [batch, 1, 128]
+  k = physical_encoder(physical_history)              ← [batch, 48, 128]
+  v = k
+  attn_out, attn_weights = cross_attention(q, k, v)  ← attn_weights: [batch, 1, 48]
+  attn_out = layer_norm(attn_out.squeeze(1))          ← [batch, 128]
+  fused = torch.cat([attn_out, microstructure], dim=-1)
+  signal = fusion_head(fused)                         ← [batch, 8]
+  lead_lag_profile = attn_weights.squeeze(1)          ← [batch, 48] attention over time
+  Return PFCATOutput(signal=signal, lead_lag_profile=lead_lag_profile,
+                     peak_lag_hours=lead_lag_profile.argmax(dim=-1))
+
+The lead_lag_profile is THE core novel output — it tells you "physical world event
+at T-N hours most influenced today's market state" — learned, not hardcoded.
+
+
+════════════════════════════════════════════════════════════
+FILE 15: python/engine/orchestrator.py — parallel NN runner
+════════════════════════════════════════════════════════════
+
+Implement QuantOrchestrator:
+
+__init__(config: dict):
+  - Load all 6 NN checkpoints
+  - Initialize ThreadPoolExecutor(max_workers=6)
+  - Connect to Rust engine via import quantphysics._core as rust_engine
+
+async def run_inference_cycle(symbols: List[str], user_config: dict) -> InferenceResult:
+  1. ONE call: feature_windows = rust_engine.get_feature_windows_batch(symbols, window=60)
+     → ndarray [N_symbols, 60, 17]
+  2. ONE call: physical_signals = rust_engine.get_physical_signals_batch(symbols)
+     → dict {symbol: [8 physical features]}  (Phase 2)
+  3. Fetch news async: news_by_symbol = await self.fetcher.get_recent_news(symbols, hours=4)
+
+  4. Run NN1-4 in parallel via asyncio.gather + ThreadPoolExecutor:
+     results = await asyncio.gather(
+       loop.run_in_executor(executor, _run_nn1, feature_windows),
+       loop.run_in_executor(executor, _run_nn2, symbols, news_by_symbol),
+       loop.run_in_executor(executor, _run_nn3, feature_windows),
+       loop.run_in_executor(executor, _run_nn4, portfolio_state, feature_windows),
+       loop.run_in_executor(executor, _run_nn6, feature_windows, physical_signals),  ← Phase 2
+     )
+     price_signals, sentiment, regime, risk, physical_fusion = results
+
+  5. Compute disagreement_score = std of normalized outputs from NN1-4
+  6. Build NN5 state vector = concat(price_signals, sentiment, regime, risk,
+                                     physical_fusion, disagreement_score, user_config)
+  7. allocations = nn5.predict(state_vector)
+  8. For each symbol with allocation > threshold:
+       result = rust_engine.submit_order(symbol, side, amount,
+                                         user_config["max_drawdown_pct"])
+  9. Return InferenceResult with full decision breakdown + SHAP-like feature attribution
+
+
+════════════════════════════════════════════════════════════
+FILE 16: python/graphs/scspn.py — Phase 2 Supply Chain Stress (Novel Method 2)
+════════════════════════════════════════════════════════════
+
+Implement SupplyChainStressPropagationNetwork:
+
+Graph construction:
+- Use torch_geometric
+- Nodes: companies (by ticker/ISIN)
+- Edges: supplier→customer relationships from SEC 10-K NLP + OpenCorporates
+- Edge attributes: [relationship_confidence, physical_flow_proxy, last_updated]
+- Physical flow proxy updated from CDICE commodity signals + GPCI port congestion
+
+GNN Architecture (MessagePassing, aggr='mean'):
+- node_encoder: nn.Linear(node_feature_dim, 128)
+- edge_encoder: nn.Linear(3, 32)
+- message_mlp: nn.Sequential(Linear(128+128+32, 256), ReLU(), Linear(256, 128))
+- update_mlp: nn.Sequential(Linear(128+128, 128), ReLU(), Linear(128, 64))
+- output_head: nn.Linear(64, 2)  ← [contagion_coefficient, recovery_time_estimate]
+
+Epidemic propagation:
+- SIR-like spreading: stress at node i propagates to neighbor j as:
+  Δstress_j = edge_weight_ij * current_stress_i * (1 - current_stress_j) * dt
+- Edge weights updated every 15 minutes from GPCI + CDICE outputs
+- Stress decays at rate 0.05 per hour if source stress not reinforced
+
+compute_contagion_scores(tickers: List[str]) -> Dict[str, ContagionScore]:
+- Returns R_sc (supply chain reproduction number) per company
+- R_sc > 1.0 = disruption spreading, R_sc < 1.0 = contained
+- ContagionScore: { ticker, r_sc, stress_level, upstream_exposure,
+                   downstream_exposure, critical_path_nodes }
+
+
+════════════════════════════════════════════════════════════
+FILE 17: python/api/server.py + routes — complete FastAPI
+════════════════════════════════════════════════════════════
+
+FastAPI app with lifespan context manager:
+- On startup: call rust_engine.start_engine(symbols, endpoints), load all NN checkpoints,
+  connect to TimescaleDB, connect to Redis, initialize orchestrator
+- On shutdown: graceful cleanup, flush Redis, close DB pool
+
+Routes to implement fully:
+
+POST /api/v1/analyze
+  Request body: AnalyzeRequest {
+    investor_id: str, investment_amount: float, risk_tolerance: str (low/medium/high),
+    markets: List[str], symbols: List[str], time_horizon_days: int
+  }
+  Response: AnalysisResponse {
+    decisions: List[TradeDecision], portfolio_allocation: Dict[str, float],
+    total_confidence: float, risk_metrics: RiskMetrics,
+    physical_world_insights: List[PhysicalInsight],  ← Phase 2
+    reasoning: Dict[str, Any], timestamp: datetime
+  }
+
+GET /api/v1/signals/live → StreamingResponse (SSE)
+  Streams Server-Sent Events with per-symbol signal updates every 5 seconds
+
+GET /api/v1/portfolio/{investor_id}
+  Returns current portfolio state, PnL, Sharpe ratio, max drawdown
+
+GET /api/v1/health
+  Returns system health: all 6 NNs loaded, Rust engine connected, DB connected,
+  ticks_per_second, physical_vessels_tracked, last_inference_latency_ms
+
+Include JWT auth middleware on all routes except /health
+Include rate limiting: 60 requests/minute per investor_id
+Include request/response logging with latency tracking
+
+
+════════════════════════════════════════════════════════════
+FILE 18: python/data/fetcher.py — async multi-source data
+════════════════════════════════════════════════════════════
+
+Implement DataFetcher with aiohttp.ClientSession:
+
+async def get_recent_news(symbols: List[str], hours: int = 4) -> Dict[str, List[str]]:
+  Concurrently fetches from:
+  - NewsAPI: GET https://newsapi.org/v2/everything?q={symbol}&from={hours_ago}
+  - Reddit PRAW: search r/investing, r/stocks, r/wallstreetbets for symbol mentions
+  - SEC EDGAR: latest 8-K filings for each ticker
+  Returns dict: {symbol: [headline/text strings]}
+
+async def get_macro_data() -> MacroData:
+  - FRED API: fetch FEDFUNDS, T10Y2Y (yield curve), VIXCLS, DEXUSEU
+  - Return MacroData with all series values
+
+async def get_earnings_calendar(symbols: List[str]) -> List[EarningsEvent]:
+  - Alpha Vantage earnings calendar endpoint
+  - Return upcoming earnings dates with expected vs actual EPS when available
+
+All fetchers: exponential backoff on rate limit (429), 3 retries,
+              aiohttp timeout=10s, semaphore to limit concurrent requests to 20
+
+
+════════════════════════════════════════════════════════════
+FILE 19: python/data/ais_fetcher.py — Phase 2 AIS data
+════════════════════════════════════════════════════════════
+
+Implement AISFetcher:
+
+async def stream_ais_positions() -> AsyncGenerator[VesselPosition, None]:
+  Connect to AISHub WebSocket: wss://data.aishub.net/ws
+  Parse NMEA/JSON messages into VesselPosition structs:
+  VesselPosition: mmsi, lat, lon, speed_knots, heading, draft, ship_type,
+                  destination, eta, timestamp_ms, vessel_name
+
+async def get_vessels_in_zone(bbox: BoundingBox, 
+                              hours_back: int = 1) -> List[VesselPosition]:
+  Query MarineTraffic REST API (free tier fallback)
+
+Implement VesselClassifier:
+  classify_by_mmsi(mmsi: int) -> VesselClassification
+  Uses ITF registry CSV lookup: MMSI → ship_type, gross_tonnage, class
+  Cache results in Redis with 24h TTL
+
+Implement PortMonitor:
+  PORT_DEFINITIONS: Dict[str, PortZone] for top 50 global ports by volume
+  (Rotterdam, Singapore, Shanghai, Houston, Mumbai, Mundra, etc.)
+  Monitor all defined ports simultaneously, feed positions to Rust GPCI engine
+
+
+════════════════════════════════════════════════════════════
+FILE 20: docker-compose.yml + Makefile + .env.example
+════════════════════════════════════════════════════════════
+
+docker-compose.yml:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    environment: POSTGRES_DB=quantphysics, POSTGRES_USER=quant, POSTGRES_PASSWORD=${DB_PASS}
+    ports: 5432:5432
+    volumes: timescale_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    ports: 6379:6379
+    volumes: redis_data:/data
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    environment: KAFKA_BROKER_ID=1, KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181, ...
+    ports: 9092:9092
+
+Makefile targets:
+  make build     ← maturin develop --release
+  make dev       ← docker-compose up -d && uvicorn python.api.server:app --reload
+  make train     ← python -m python.training.trainer --all-models
+  make test      ← cargo test && pytest tests/
+  make backtest  ← python -m python.training.walk_forward --years 3
+  make phase2    ← enable Phase 2 geospatial pipeline
+
+.env.example with ALL required keys:
+  ALPHA_VANTAGE_API_KEY=
+  NEWSAPI_KEY=
+  REDDIT_CLIENT_ID=
+  REDDIT_CLIENT_SECRET=
+  REDDIT_USER_AGENT=
+  EIA_API_KEY=
+  OPENSKY_USERNAME=
+  OPENSKY_PASSWORD=
+  AISHUB_API_KEY=
+  DB_HOST=localhost
+  DB_PORT=5432
+  DB_NAME=quantphysics
+  DB_USER=quant
+  DB_PASS=
+  REDIS_URL=redis://localhost:6379
+  KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+  JWT_SECRET_KEY=
+  JWT_ALGORITHM=HS256
+  BINANCE_WS_URL=wss://stream.binance.com:9443/ws
+  ENABLE_PHASE2=false
+  WANDB_API_KEY=
+  LOG_LEVEL=INFO
+  MAX_POSITION_PCT=0.20
+  MAX_DRAWDOWN_PCT=0.10
+  MIN_CONFIDENCE_THRESHOLD=0.60
+
+
+════════════════════════════════════════════════════════════
+FILE 21: README.md — complete setup instructions
+════════════════════════════════════════════════════════════
+
+Write a full README with:
+1. Architecture overview with ASCII diagram
+2. Prerequisites (Rust 1.76+, Python 3.11+, CUDA optional, maturin)
+3. Step-by-step installation:
+   - git clone, create venv
+   - pip install maturin
+   - maturin develop --release  ← builds Rust and installs into venv
+   - pip install -e .
+   - cp .env.example .env  ← fill in API keys
+   - docker-compose up -d
+   - python -m python.training.trainer --model nn1 --epochs 50
+   - make dev
+4. API usage examples with curl commands
+5. Phase 2 activation: set ENABLE_PHASE2=true in .env
+6. Backtesting instructions
+7. Patent notice section mentioning CDICE, SCSPN, GPCI, PFCAT methods
+
+
+════════════════════════════════════════════════════════════
+IMPLEMENTATION RULES — apply to every file
+════════════════════════════════════════════════════════════
+
+1. NO stub implementations. Every function must have a complete, working body.
+   No "pass", no "TODO", no "raise NotImplementedError".
+
+2. Every Rust file must have proper error handling using anyhow::Result.
+   No unwrap() in production paths — use ? operator or match.
+
+3. Every Python file must have full type hints on all function signatures.
+   Use dataclasses or Pydantic models for all data structures.
+
+4. Every async Python function must have proper exception handling and logging.
+
+5. All configuration must come from environment variables via python/config.py.
+   Use pydantic-settings BaseSettings class.
+
+6. Rust global state must use once_cell::sync::Lazy.
+   Python global model instances must use module-level initialization.
+
+7. Add tracing::instrument! to all Rust public functions.
+   Add Python logging at INFO level for all inference cycles.
+
+8. The PyO3 bridge functions must use batch operations — never loop-call from Python.
+
+9. Phase 2 geospatial features are gated by ENABLE_PHASE2 env var.
+   When false, get_physical_signals_batch returns zeros. System still runs.
+
+10. All neural network models must support: train mode, eval mode,
+    checkpoint save/load, and CPU-only mode (for environments without CUDA).
+
+Start building now. Create all files in the order listed above.
+Begin with Cargo.toml, then pyproject.toml, then src/lib.rs,
+then all Rust source files, then all Python files, then config files.
+After creating each file, verify it is syntactically correct before proceeding.
+```
