@@ -1,0 +1,86 @@
+
+<style>
+.nm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+.nm-card { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 12px 14px; cursor: pointer; transition: border-color 0.15s; }
+.nm-card:hover { border-color: var(--color-border-primary); }
+.nm-tag { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 10px; display: inline-block; margin-bottom: 6px; }
+.nm-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
+.nm-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.55; }
+.cat-label { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); margin: 1rem 0 8px; padding-left: 2px; }
+</style>
+
+<div class="cat-label">Deep learning architecture novelties</div>
+<div class="nm-grid">
+  <div class="nm-card" onclick="sendPrompt('Explain Temporal Fusion Transformer vs pure LSTM for financial time series in detail')">
+    <span class="nm-tag" style="background:#EEEDFE;color:#3C3489">Sequence models</span>
+    <div class="nm-title">LSTM + Multi-head attention hybrid (NN1)</div>
+    <div class="nm-desc">Rather than vanilla LSTM, a temporal transformer attention layer attends over the 60-tick history. Captures long-range dependencies that LSTM forgets — e.g., a price pattern 45 minutes ago still influencing now.</div>
+  </div>
+  <div class="nm-card" onclick="sendPrompt('Explain Monte Carlo Dropout as Bayesian approximation for uncertainty in neural networks')">
+    <span class="nm-tag" style="background:#FCEBEB;color:#791F1F">Uncertainty</span>
+    <div class="nm-title">Monte Carlo Dropout (Bayesian NN4)</div>
+    <div class="nm-desc">Dropout kept active at inference. 100 stochastic forward passes approximate a Bayesian posterior. The variance of outputs = epistemic uncertainty. High uncertainty directly reduces position sizing — a novel risk management mechanism.</div>
+  </div>
+  <div class="nm-card" onclick="sendPrompt('How does the CNN + HMM hybrid work for market regime detection in quantitative finance?')">
+    <span class="nm-tag" style="background:#FAECE7;color:#712B13">Hybrid model</span>
+    <div class="nm-title">CNN-HMM regime detector (NN3)</div>
+    <div class="nm-desc">1D CNN extracts local pattern features from price windows (head-and-shoulders, cup-and-handle). These features are then decoded by a 4-state Gaussian HMM — combining discriminative pattern recognition with generative state modeling. Rare combination in retail quant tools.</div>
+  </div>
+  <div class="nm-card" onclick="sendPrompt('Explain FinBERT domain adaptation and how to fine-tune it on custom market news')">
+    <span class="nm-tag" style="background:#E1F5EE;color:#085041">NLP</span>
+    <div class="nm-title">Domain-adapted FinBERT (NN2)</div>
+    <div class="nm-desc">Not just raw FinBERT — fine-tuned on your specific market's news corpus using contrastive loss (positive: "stock rallied" + "bullish"; negative: "stock crashed" + "bullish"). Domain-specific fine-tuning adds ~15% accuracy over base FinBERT.</div>
+  </div>
+</div>
+
+<div class="cat-label">Reinforcement learning novelties</div>
+<div class="nm-grid">
+  <div class="nm-card" onclick="sendPrompt('Explain PPO with custom multi-objective reward for portfolio allocation in detail')">
+    <span class="nm-tag" style="background:#EAF3DE;color:#27500A">RL</span>
+    <div class="nm-title">PPO with multi-objective reward (NN5)</div>
+    <div class="nm-desc">Reward = α·Sharpe + β·Calmar - γ·turnover - δ·VaR_violation. The four competing objectives force NN5 to learn risk-adjusted returns, not just raw profit. Calmar ratio (return/max_drawdown) is rarely used as RL reward in open-source systems.</div>
+  </div>
+  <div class="nm-card" onclick="sendPrompt('How does NN5 use regime output from NN3 to adapt its policy dynamically?')">
+    <span class="nm-tag" style="background:#EAF3DE;color:#27500A">RL</span>
+    <div class="nm-title">Regime-conditioned policy (NN3 → NN5)</div>
+    <div class="nm-desc">NN5 receives the regime one-hot vector as part of its state. This means the policy is regime-aware — it learns a different allocation strategy for bull vs bear vs sideways markets. Effectively 4 learned policies in one network.</div>
+  </div>
+</div>
+
+<div class="cat-label">System architecture novelties</div>
+<div class="nm-grid">
+  <div class="nm-card" onclick="sendPrompt('Explain compile-time memory safety advantage of Rust vs C++ for HFT tick processing')">
+    <span class="nm-tag" style="background:#FAEEDA;color:#633806">Systems</span>
+    <div class="nm-title">Rust borrow-checker enforced HFT safety</div>
+    <div class="nm-desc">Zero-cost data race prevention on the order book. Rust's type system makes it impossible to accidentally share mutable state across ingestion threads — a bug class that has cost HFT firms millions. No runtime check, no GC pause, enforced at compile time.</div>
+  </div>
+  <div class="nm-card" onclick="sendPrompt('How does the two-layer risk architecture work with both NN4 probabilistic and Rust deterministic checks?')">
+    <span class="nm-tag" style="background:#FAEEDA;color:#633806">Risk</span>
+    <div class="nm-title">Two-layer probabilistic + deterministic risk</div>
+    <div class="nm-desc">NN4 provides probabilistic risk scores (soft limits). Rust engine enforces deterministic hard limits. Even if NN4 miscalibrates, Rust never lets position sizing exceed the hard-coded VaR threshold. Defense in depth at the architectural level.</div>
+  </div>
+  <div class="nm-card" onclick="sendPrompt('How does the HFT system use asyncio gather and ThreadPoolExecutor to run all 5 NNs simultaneously?')">
+    <span class="nm-tag" style="background:#E6F1FB;color:#0C447C">Concurrency</span>
+    <div class="nm-title">Parallel inference with GIL-release</div>
+    <div class="nm-desc">asyncio.gather() submits all 5 NNs to ThreadPoolExecutor simultaneously. PyTorch releases the GIL during CUDA kernel calls, enabling true GPU parallelism across models. All 5 NNs run in overlapping GPU time slices, not sequentially.</div>
+  </div>
+  <div class="nm-card" onclick="sendPrompt('What is walk-forward cross-validation and why is it essential for quant model validation?')">
+    <span class="nm-tag" style="background:#E6F1FB;color:#0C447C">Validation</span>
+    <div class="nm-title">Walk-forward out-of-sample validation</div>
+    <div class="nm-desc">Models are trained on data up to period T, tested on T+1 to T+3 months, then retrained with T+3 added. Sliding window across 3 years. Prevents look-ahead bias — the most common and fatal error in quant backtesting.</div>
+  </div>
+</div>
+
+<div class="cat-label">Data novelties</div>
+<div class="nm-grid">
+  <div class="nm-card" onclick="sendPrompt('Explain order book imbalance feature and why it predicts short-term price direction')">
+    <span class="nm-tag" style="background:#FBEAF0;color:#72243E">Features</span>
+    <div class="nm-title">L2 order book imbalance as a feature</div>
+    <div class="nm-desc">bid_volume / (bid_volume + ask_volume) computed in Rust on every tick update. Academic research shows this is one of the strongest short-horizon price direction predictors — far more informative than closing price alone.</div>
+  </div>
+  <div class="nm-card" onclick="sendPrompt('How do earnings call transcripts improve sentiment analysis accuracy over headlines alone?')">
+    <span class="nm-tag" style="background:#FBEAF0;color:#72243E">Alt data</span>
+    <div class="nm-title">Earnings call transcript NLP</div>
+    <div class="nm-desc">SEC EDGAR provides full earnings call transcripts free. NN2 processes management tone, keyword frequency ("headwinds", "accelerating"), and linguistic hedging patterns — alpha sources that pure price models cannot see.</div>
+  </div>
+</div>
