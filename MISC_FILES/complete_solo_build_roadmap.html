@@ -1,0 +1,301 @@
+
+<style>
+*{box-sizing:border-box}
+.rmap{font-family:var(--font-sans);padding:0 0 2rem}
+.timeline{display:flex;gap:0;margin-bottom:1.5rem;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden}
+.tl-phase{flex:1;padding:8px 4px;text-align:center;cursor:pointer;transition:background 0.15s;border-right:0.5px solid var(--color-border-tertiary);min-width:0}
+.tl-phase:last-child{border-right:none}
+.tl-phase.active{background:var(--color-background-info)}
+.tl-phase:hover:not(.active){background:var(--color-background-secondary)}
+.tl-label{font-size:10px;font-weight:500;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-months{font-size:10px;color:var(--color-text-tertiary);margin-top:2px}
+.tl-dot{width:8px;height:8px;border-radius:50%;margin:0 auto 4px}
+.phase-card{border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;margin-bottom:1rem}
+.phase-header{padding:14px 16px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary)}
+.ph-top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.ph-badge{font-size:11px;font-weight:500;padding:3px 9px;border-radius:8px;white-space:nowrap}
+.ph-title{font-size:14px;font-weight:500;color:var(--color-text-primary)}
+.ph-meta{display:flex;gap:16px;font-size:12px;color:var(--color-text-secondary)}
+.ph-meta span{display:flex;align-items:center;gap:4px}
+.phase-body{padding:14px 16px}
+.section-label{font-size:11px;font-weight:500;color:var(--color-text-tertiary);margin:12px 0 6px;text-transform:none}
+.task-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.task-card{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:9px 11px;cursor:pointer;border:0.5px solid var(--color-border-tertiary);transition:border-color 0.12s}
+.task-card:hover{border-color:var(--color-border-primary)}
+.tc-week{font-size:10px;font-weight:500;color:var(--color-text-tertiary);margin-bottom:3px}
+.tc-title{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:3px}
+.tc-body{font-size:11px;color:var(--color-text-secondary);line-height:1.5}
+.deliverables{margin-top:10px}
+.del-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:12px;color:var(--color-text-secondary)}
+.del-item:last-child{border-bottom:none}
+.del-check{width:14px;height:14px;border-radius:3px;border:0.5px solid var(--color-border-secondary);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center}
+.del-check.done{background:var(--color-background-success);border-color:var(--color-border-success)}
+.exit-box{background:var(--color-background-warning);border-radius:var(--border-radius-md);padding:10px 12px;margin-top:10px;font-size:12px;color:var(--color-text-warning);line-height:1.5}
+.exit-box b{color:var(--color-text-warning);font-weight:500}
+.tools-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.tool-pill{font-size:11px;padding:2px 8px;border-radius:6px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);color:var(--color-text-secondary)}
+.earn-box{background:var(--color-background-success);border-radius:var(--border-radius-md);padding:8px 12px;margin-top:8px;font-size:12px;color:var(--color-text-success)}
+.nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+.progress-bar{height:4px;background:var(--color-background-secondary);border-radius:2px;margin-bottom:16px;overflow:hidden}
+.progress-fill{height:100%;border-radius:2px;transition:width 0.3s}
+</style>
+
+<div class="rmap">
+<div class="progress-bar"><div class="progress-fill" id="prog" style="width:12%;background:#1D9E75"></div></div>
+
+<div class="timeline" id="timeline">
+  <div class="tl-phase active" onclick="goPhase(0)">
+    <div class="tl-dot" style="background:#888780"></div>
+    <div class="tl-label">Foundation</div>
+    <div class="tl-months">M 1–2</div>
+  </div>
+  <div class="tl-phase" onclick="goPhase(1)">
+    <div class="tl-dot" style="background:#1D9E75"></div>
+    <div class="tl-label">Rust engine</div>
+    <div class="tl-months">M 3–5</div>
+  </div>
+  <div class="tl-phase" onclick="goPhase(2)">
+    <div class="tl-dot" style="background:#7F77DD"></div>
+    <div class="tl-label">NN1 + NN2</div>
+    <div class="tl-months">M 5–8</div>
+  </div>
+  <div class="tl-phase" onclick="goPhase(3)">
+    <div class="tl-dot" style="background:#534AB7"></div>
+    <div class="tl-label">NN3–NN5</div>
+    <div class="tl-months">M 8–13</div>
+  </div>
+  <div class="tl-phase" onclick="goPhase(4)">
+    <div class="tl-dot" style="background:#D85A30"></div>
+    <div class="tl-label">Integration</div>
+    <div class="tl-months">M 13–16</div>
+  </div>
+  <div class="tl-phase" onclick="goPhase(5)">
+    <div class="tl-dot" style="background:#185FA5"></div>
+    <div class="tl-label">Phase 2</div>
+    <div class="tl-months">M 16–22</div>
+  </div>
+  <div class="tl-phase" onclick="goPhase(6)">
+    <div class="tl-dot" style="background:#BA7517"></div>
+    <div class="tl-label">Validation</div>
+    <div class="tl-months">M 22–24</div>
+  </div>
+  <div class="tl-phase" onclick="goPhase(7)">
+    <div class="tl-dot" style="background:#639922"></div>
+    <div class="tl-label">Deploy</div>
+    <div class="tl-months">M 24–26</div>
+  </div>
+</div>
+
+<div id="phase-content"></div>
+
+<div class="nav-row">
+  <button onclick="prevPhase()" id="btn-prev">← Previous phase</button>
+  <span id="phase-counter" style="font-size:12px;color:var(--color-text-tertiary)">Phase 1 of 8</span>
+  <button onclick="nextPhase()" id="btn-next">Next phase →</button>
+</div>
+</div>
+
+<script>
+const phases = [
+{
+  title:"Foundation — learn, set up, plan",
+  badge:"Pre-build",badgeColor:"#F1EFE8",badgeText:"#444441",
+  months:"Months 1–2",weeks:"8 weeks",cost:"₹0–₹5,000",earn:"Start freelancing on Upwork immediately — charge ₹3,000–₹8,000/hr for Python/ML work",
+  tools:["Python 3.11","Rust (rustup)","VS Code + rust-analyzer","Git + GitHub","Ubuntu 22 / WSL2","Jupyter","yfinance","pandas"],
+  tasks:[
+    {week:"Week 1–2",title:"Rust fundamentals",body:"Complete 'The Rust Book' chapters 1–10. Do all Rustlings exercises. Focus on ownership, borrowing, lifetimes. Write a simple CSV parser in Rust."},
+    {week:"Week 2–3",title:"Quant finance basics",body:"Study: Sharpe ratio, VaR, drawdown, MACD, RSI, Bollinger Bands. Read 'Quantitative Trading' by Ernie Chan chapters 1–4. Pull stock data with yfinance."},
+    {week:"Week 3–4",title:"Dev environment",body:"Set up Ubuntu/WSL2 dev box. Install Rust toolchain, Python 3.11 with pyenv, TimescaleDB (Docker), Redis (Docker), VS Code with all extensions. Create GitHub repo with proper .gitignore."},
+    {week:"Week 4–5",title:"Project architecture",body:"Create full directory structure. Write Cargo.toml and pyproject.toml skeletons. Study PyO3 documentation. Build a toy PyO3 project — Rust function called from Python. Confirm the bridge compiles."},
+    {week:"Week 5–6",title:"Data exploration",body:"Download 3 years of daily OHLCV for 20 NSE + 20 US stocks using yfinance. Build a simple Python backtest in a Jupyter notebook. Understand slippage, commission modeling. Document data quality issues found."},
+    {week:"Week 6–8",title:"Patent provisional filing",body:"Consult a patent attorney (₹5,000–₹15,000 for a 1-hr session). Draft the provisional patent for CDICE + SCSPN + PFCAT. File provisional (₹3,000–₹8,000 filing fee in India). You now have 12 months of patent-pending status."}
+  ],
+  deliverables:["'The Rust Book' completed chapters 1–15","All Rustlings exercises passing","Toy PyO3 project: Rust function callable from Python","3-year historical dataset for 40 symbols downloaded","Simple Jupyter backtest notebook with transaction cost modeling","Provisional patent filed — priority date established","GitHub repo with full project structure committed"],
+  exit:"Before moving to Phase 2, you must be able to: write Rust structs with lifetime annotations without errors, explain ownership without looking it up, run a Python backtest that correctly models bid/ask spread and commission. If you cannot do all three, extend this phase."
+},
+{
+  title:"Rust data engine — ingestion, order book, features",
+  badge:"Phase 1A",badgeColor:"#E1F5EE",badgeText:"#085041",
+  months:"Months 3–5",weeks:"9 weeks",cost:"₹0 (free APIs)",earn:"Post first Upwork gig: 'Rust performance engineer for fintech' — ₹5,000–₹12,000/hr",
+  tools:["tokio 1.x","tokio-tungstenite 0.21","serde / serde_json","crossbeam 0.8","dashmap 5","ta 0.5","once_cell","PyO3 0.21","maturin","BTreeMap+RwLock"],
+  tasks:[
+    {week:"Week 1–2",title:"Async Tokio foundation",body:"Build a Tokio hello-world that opens 3 concurrent WebSocket connections. Study tokio::spawn, async/await, and mpsc channels. Connect to Binance test WebSocket. Parse a single tick message."},
+    {week:"Week 2–3",title:"Multi-feed ingestion",body:"Build WebSocketIngester struct with auto-reconnect. Connect simultaneously to Binance BTC/ETH, Alpha Vantage REST for NSE data. Implement serde zero-copy deserialization for Tick struct. Measure parse latency — target under 5 microseconds per tick."},
+    {week:"Week 3–4",title:"Order book engine",body:"Implement BTreeMap-based L2 order book. Handle bid/ask level updates and deletions. Implement order_imbalance() computation. Wrap in RwLock for thread safety. Write unit tests — 100% coverage on book update logic."},
+    {week:"Week 4–5",title:"Feature engine",body:"Integrate ta crate. Compute RSI-14, MACD-12-26-9, Bollinger Bands-20 on every tick update. Store rolling 200-tick history per symbol in DashMap. Write FeatureVector struct. Benchmark: 50,000 ticks/second sustained throughput."},
+    {week:"Week 5–6",title:"Risk engine skeleton",body:"Implement VaR computation using statrs distributions. Build position_size_limit() function with hard caps. Implement max_drawdown_check() as a pre-trade gate. Write the Rust risk engine such that Python cannot bypass it."},
+    {week:"Week 7–8",title:"PyO3 bridge",body:"Implement all pyfunction exports: start_engine(), get_features(), get_feature_window(), get_orderbook_snapshot(), submit_order(). Run maturin develop --release. Call every function from a Python test script. Measure round-trip PyO3 call latency."},
+    {week:"Week 8–9",title:"Integration test",body:"Run all WebSocket feeds simultaneously for 24 hours. Log every tick, verify no data gaps > 2 seconds. Verify order book stays consistent. Verify feature values are mathematically correct vs pandas computation. Fix all bugs found."}
+  ],
+  deliverables:["Rust engine compiles without warnings","WebSocket connection to 3+ exchanges running 24 hours without crash","Order book tested against 10,000 synthetic update events","Feature vectors match pandas reference implementation within 0.001%","PyO3 bridge: Python can call all 5 functions","maturin build produces installable wheel","Integration test: 24-hour run log with zero crashes"],
+  exit:"Do not proceed until: the Rust engine runs for 72 continuous hours without memory leak (check with valgrind/heaptrack), PyO3 call latency is under 10 microseconds per batch call, feature values match reference within 0.001%. This engine is the bedrock — if it's wrong, every NN is wrong."
+},
+{
+  title:"NN1 price prediction + NN2 sentiment",
+  badge:"Phase 1B",badgeColor:"#EEEDFE",badgeText:"#3C3489",
+  months:"Months 5–8",weeks:"12 weeks",cost:"GPU cloud: ₹3,000–₹8,000/month (vast.ai or Lambda)",earn:"Launch signal newsletter on Substack — document your NN1 building process publicly. 50 subscribers at ₹500/month = ₹25,000/month within 3 months.",
+  tools:["PyTorch 2.2","PyTorch Lightning 2.2","Optuna 3.5","Weights & Biases","HuggingFace Transformers 4.38","PRAW (Reddit API)","NewsAPI","aiohttp","Polars 0.20","TimescaleDB"],
+  tasks:[
+    {week:"Week 1–2",title:"Training data pipeline",body:"Build Python data loader that calls Rust engine for feature windows. Store 3-year tick feature history in TimescaleDB. Build walk-forward cross-validation split generator. Verify no look-ahead bias in any split. This step is critical — wrong splits = fake results."},
+    {week:"Week 2–4",title:"NN1 architecture",body:"Build LSTM + multi-head attention model in PyTorch. Input: [batch, 60, 12] feature window from Rust. Output: [direction, magnitude, confidence] × 3 horizons. Train on 2021–2023, validate on 2024. Track on W&B. Target: validation accuracy > 54% on direction."},
+    {week:"Week 4–5",title:"NN1 hyperparameter search",body:"Run Optuna TPE search over: hidden_dim [64,512], num_layers [1,4], dropout [0.1,0.5], learning_rate [1e-5,1e-3], sequence_length [30,120]. 50 trials minimum. Save best checkpoint. Document which hyperparameters matter most."},
+    {week:"Week 5–6",title:"NN1 backtesting",body:"Build proper backtest with: bid/ask spread costs, 0.05% slippage, realistic fill assumptions (buy at ask, sell at bid). Run walk-forward backtest 2021–2024. Target: Sharpe ratio > 1.0 on out-of-sample data. If below 0.8, rethink features."},
+    {week:"Week 6–8",title:"NN2 FinBERT setup",body:"Download ProsusAI/finbert. Build news fetching pipeline: NewsAPI (100 req/day free), Reddit PRAW (r/investing, r/stocks, company-specific subs), SEC EDGAR earnings calls. Build text preprocessing pipeline. Fine-tune FinBERT on 5,000 labeled financial headlines (label manually: 500 + use existing FinBERT labels for rest)."},
+    {week:"Week 8–10",title:"NN2 training",body:"Fine-tune FinBERT with custom head on your labeled dataset. Target: validation F1 > 0.75 on 3-class sentiment (positive/negative/neutral). Build inference pipeline that processes a company's last 4 hours of news in under 2 seconds. Cache results in Redis with 1-hour TTL."},
+    {week:"Week 10–12",title:"NN1+NN2 joint evaluation",body:"Run NN1 + NN2 combined signal on paper trades. Does sentiment score improve NN1 accuracy? Build correlation analysis between NN2 sentiment and next-day price moves. Document findings. First publication-worthy result: NN1 + NN2 vs NN1 alone accuracy comparison."}
+  ],
+  deliverables:["TimescaleDB loaded with 3-year tick history for 40+ symbols","NN1 checkpoint: Sharpe > 1.0 on out-of-sample walk-forward","NN2 checkpoint: F1 > 0.75 on sentiment classification","News fetching pipeline running daily (NewsAPI + Reddit + SEC)","Joint NN1+NN2 paper trading log — 30 days minimum","W&B experiment dashboard showing all training runs","First public blog post / YouTube video about the build"],
+  exit:"NN1 must achieve Sharpe > 1.0 on at least 3 separate out-of-sample time windows (not just one lucky period). NN2 F1 must exceed 0.75. If either fails, do not proceed — fix the models first. A bad foundation cannot be patched later."
+},
+{
+  title:"NN3 regime + NN4 risk + NN5 portfolio",
+  badge:"Phase 1C",badgeColor:"#CECBF6",badgeText:"#26215C",
+  months:"Months 8–13",weeks:"20 weeks",cost:"GPU cloud: ₹4,000–₹10,000/month",earn:"Start selling signal subscription: ₹1,500/month. Target 30 subscribers by end of phase = ₹45,000/month recurring.",
+  tools:["hmmlearn 0.3","PyTorch Geometric","stable-baselines3 2.2","gymnasium","scikit-learn","scipy","VIX data (CBOE free)","asyncio"],
+  tasks:[
+    {week:"Week 1–4",title:"NN3 CNN + HMM regime",body:"Build 1D-CNN that takes 30-day price windows and extracts regime features. Pipe CNN output into GaussianHMM with 4 states. Label states post-hoc: analyze which state corresponds to bull/bear/sideways/crisis using historical data. Train on 2010–2023 including 2008 crisis if possible. Validate that 2020 COVID crash is detected as 'crisis' state within 3 days."},
+    {week:"Week 4–6",title:"NN3 regime-aware weighting",body:"Build regime-weighting function: in bull regime, trust NN1 signal more (weight 0.7). In crisis regime, reduce all signals to 30% and maximize cash. Test regime detector on 2020 crash replay. It should switch to crisis state by March 5, 2020 (before the worst days)."},
+    {week:"Week 6–10",title:"NN4 risk MLP + MC Dropout",body:"Build 6-layer MLP with MC Dropout. Inputs: portfolio composition, correlation matrix, VIX, current drawdown, NN1/2/3 signal agreement score. Output: VaR_95, expected_max_drawdown, model_uncertainty (variance of 100 MC forward passes). Train with MSE loss against realized drawdowns from historical data. Calibrate: predicted uncertainty should correlate with actual prediction error."},
+    {week:"Week 10–14",title:"NN4 validation + Rust integration",body:"Validate NN4 uncertainty calibration using reliability diagrams. Build the integration: NN4 outputs soft risk limits → Rust engine enforces hard limits. Test: have NN4 'approve' a trade that violates Rust hard limit. Rust must reject it. Document this two-layer safety architecture — it's part of your patent claim."},
+    {week:"Week 14–18",title:"NN5 PPO setup",body:"Build custom Gymnasium environment wrapping all 4 NN signal outputs + user preferences as observation space. Action space: Dirichlet allocation over N assets. Reward: α×Sharpe + β×Calmar - γ×turnover - δ×VaR_violation. Train PPO agent using stable-baselines3. Initial training on 3-year historical data with simulated NN1-4 signals."},
+    {week:"Week 18–20",title:"NN5 multi-objective tuning",body:"Tune reward function weights using Optuna. Test NN5 behavior: does it correctly reduce all positions in crisis regime? Does it diversify appropriately? Does it respect the investor's stated risk tolerance? Run 3 different investor profiles (conservative, moderate, aggressive) — verify NN5 produces meaningfully different allocations."}
+  ],
+  deliverables:["NN3 detects 2020 COVID crisis by March 5 in backtesting replay","NN4 calibration plot: uncertainty vs actual error correlation > 0.6","Rust hard-limit test: 100 test trades — all risk-violating trades rejected","NN5 stable training: 1M+ timesteps without reward collapse","NN5 investor profile test: 3 profiles produce distinct allocations","Signal subscription channel launched — first 10 paying subscribers","30-day paper trading with all 5 NNs running simultaneously"],
+  exit:"NN5 must produce positive Sharpe (>0.5) on a 6-month out-of-sample paper trading period. All 5 NNs must be running simultaneously without memory leak or crash. NN4 hard-limit gate must be 100% reliable in rejection tests. Do not deploy real capital before passing this gate."
+},
+{
+  title:"System integration, FastAPI, paper trading",
+  badge:"Phase 1D",badgeColor:"#FAECE7",badgeText:"#712B13",
+  months:"Months 13–16",weeks:"12 weeks",cost:"Server: ₹3,000–₹8,000/month (AWS EC2 g4dn.xlarge)",earn:"Scale signal subscription to 50+ subscribers at ₹2,000/month = ₹1,00,000/month. Pitch first B2B brokerage partnership.",
+  tools:["FastAPI 0.109","uvicorn","PostgreSQL","Redis","Apache Kafka","JWT auth","pytest","locust (load testing)","Docker","docker-compose"],
+  tasks:[
+    {week:"Week 1–2",title:"FastAPI investor layer",body:"Build REST endpoints: POST /analyze (user prefs → decisions), GET /portfolio, GET /signals/{symbol}, GET /track-record. Add JWT authentication. Add rate limiting. OpenAPI docs auto-generated. Load test with locust: 100 concurrent users, < 500ms p95 response time."},
+    {week:"Week 2–4",title:"Kafka event backbone",body:"Deploy Kafka on Docker. Set up topics: raw-ticks, feature-vectors, nn-signals, execution-events. Route Rust tick output through Kafka. This enables: replay for backtesting, audit trail, decoupling ingestion from inference. Critical for debugging live issues."},
+    {week:"Week 4–6",title:"Full system integration test",body:"Run the complete pipeline end-to-end: Rust ingestion → Kafka → Python NNs → NN5 decision → Rust execution gate → paper order log. Test 100 complete cycles without error. Test reconnection: kill WebSocket connection mid-run, verify auto-recovery. Test GIL release: confirm 5 NNs run in overlapping GPU time."},
+    {week:"Week 6–8",title:"Monitoring + alerting",body:"Set up Grafana + Prometheus dashboards: Rust engine tick rate, order book depth, PyO3 call latency, NN inference latency, paper PnL. Set up Slack/Telegram alerts: WebSocket disconnect, NN prediction confidence below threshold, drawdown exceeding 3%. Build health check endpoint."},
+    {week:"Week 8–10",title:"6-month paper trading",body:"Run full system on paper trades for 6 months. Log every decision with full reasoning chain: which NN contributed what signal, what NN5 decided, what risk engine said. This log becomes your track record for investor pitches. Target Sharpe > 1.2 over the 6-month period."},
+    {week:"Week 10–12",title:"Retraining pipeline",body:"Build automated weekly retraining: detect if rolling 30-day Sharpe drops below 60% of 90-day baseline → trigger retraining pipeline automatically. Log all retrains to W&B. Never overwrite old checkpoints. Build model registry with version tagging."}
+  ],
+  deliverables:["FastAPI server: all endpoints responding under 200ms","Kafka pipeline: full event trace for every trade decision","6-month paper trading log with Sharpe > 1.2","Monitoring dashboard showing all system health metrics","Automated retraining pipeline triggered and tested","Docker-compose file: entire Phase 1 system starts in one command","Signal subscription: 50+ paying subscribers"],
+  exit:"The 6-month paper trading track record is the gating deliverable for this phase. Without it, you cannot pitch investors, cannot file the full patent, and should not deploy real capital. Sharpe must be above 1.0 for at least 4 of the 6 months (not just the average)."
+},
+{
+  title:"Phase 2 — geospatial engine + novel NNs",
+  badge:"Phase 2",badgeColor:"#E6F1FB",badgeText:"#0C447C",
+  months:"Months 16–22",weeks:"24 weeks",cost:"Server upgrade: ₹8,000–₹15,000/month",earn:"File full patent application (₹30,000–₹60,000 with attorney). Begin B2B licensing conversations with data vendors and brokerages.",
+  tools:["AISHub API","OpenSky Network API","EIA API","DBSCAN (scipy)","PyTorch Geometric","PyG GNN","Wikidata SPARQL","SEC EDGAR parser","OpenCorporates API","Rust DBSCAN impl"],
+  tasks:[
+    {week:"Week 1–3",title:"AIS + ADS-B ingestion in Rust",body:"Extend Rust engine with second ingestion module: connect to AISHub free WebSocket (ship positions + draft), OpenSky Network API (aircraft positions). Parse vessel metadata from ITF registry CSV. Store per-MMSI position history in DashMap. Measure: can Rust handle 50,000 vessel position updates per minute?"},
+    {week:"Week 3–6",title:"GPCI implementation in Rust",body:"Implement DBSCAN spatial clustering on AIS positions within port bounding boxes (UN/LOCODE coordinates). Compute per-port: vessel_count_in_anchorage, median_wait_time, throughput_index. Normalize with 90-day rolling baseline. Export GPCI score for 50 major ports via PyO3. This is one of your 4 patent claims."},
+    {week:"Week 6–9",title:"CDICE implementation",body:"Build vessel classification lookup from MMSI → vessel_type (tanker/bulk/container). Compute loaded_fraction from draft telemetry using physics formula. Infer commodity type from origin+destination port pair. Aggregate global inventory delta per commodity. Calibrate against EIA weekly oil reports. CDICE is patent claim #2."},
+    {week:"Week 9–12",title:"Corporate relationship graph",body:"Build company graph: nodes = listed companies (NSE 500 + S&P 500). Edges = supplier/customer relationships parsed from SEC 10-K 'material suppliers' sections using spaCy NER. Augment with OpenCorporates ownership data. Wikidata subsidiary relationships. Result: directed graph with ~5,000 nodes and ~15,000 edges stored in NetworkX / Neo4j."},
+    {week:"Week 12–16",title:"SCSPN GNN",body:"Implement epidemic-model GNN using PyTorch Geometric. Update graph edge weights dynamically from GPCI + CDICE signals. Run message-passing to compute per-company supply chain contagion coefficient R_sc. Train on historical events: 2021 Suez Canal blockage, 2020 semiconductor shortage, 2022 Ukraine grain disruption. Validate: does R_sc spike for the right companies 5–10 days before earnings misses? SCSPN is patent claim #3."},
+    {week:"Week 16–20",title:"PFCAT cross-modal transformer",body:"Build NN6: cross-modal attention transformer. Query = financial microstructure features (from Rust Phase 1). Key/Value = physical world feature sequence (CDICE + SCSPN + GPCI + ADS-B anomalies, last 48 hours). Train on historical data where physical events preceded market moves. Target: NN6 alone should achieve Sharpe > 0.6 on energy/materials sector stocks. PFCAT is patent claim #4."},
+    {week:"Week 20–24",title:"Phase 2 integration",body:"Update NN5 state vector to include Phase 2 outputs. Retrain NN5 with expanded state. Run A/B backtest: Phase 1 only vs Phase 1 + Phase 2. Document improvement in Sharpe, reduced drawdown during supply chain events. This A/B comparison is your patent validation exhibit."}
+  ],
+  deliverables:["Rust geospatial engine: handles 50K vessel updates/min without memory leak","GPCI scores for 50 major ports, validated against known congestion events","CDICE calibrated against EIA weekly reports (R² > 0.7)","Corporate graph: 5,000+ nodes, 15,000+ edges, weekly update pipeline","SCSPN tested against Suez Canal event: correct companies spiked","NN6 PFCAT: Sharpe > 0.6 on energy/materials sector in backtest","NN5 A/B test: Phase 2 improves overall Sharpe by > 0.15","Full patent application filed (not just provisional)"],
+  exit:"The SCSPN must correctly identify top-10 affected companies from the 2021 Suez Canal blockage within the historical replay. If it doesn't, the GNN architecture is wrong. The PFCAT must show statistically significant improvement (p < 0.05) over Phase 1 alone on an out-of-sample test set. Both validations must pass before calling Phase 2 complete."
+},
+{
+  title:"Validation, walk-forward audit, stress testing",
+  badge:"Validation",badgeColor:"#FAEEDA",badgeText:"#633806",
+  months:"Months 22–24",weeks:"8 weeks",cost:"₹10,000–₹20,000 (independent data validation, attorney review)",earn:"With 18-month track record (paper + Phase 2), begin pitching family offices and HNI investors. Target ₹50L–₹2Cr first raise.",
+  tools:["SHAP","conformal prediction (MAPIE)","Polars backtesting","pytest","hypothesis testing","scipy stats","quantstats library"],
+  tasks:[
+    {week:"Week 1–2",title:"Walk-forward validation audit",body:"Run complete walk-forward backtest over 2018–2024. Train window: 2 years. Test window: 6 months. Roll forward by 3 months. 10+ separate test windows. Document Sharpe, Calmar, max drawdown, win rate for each window. Calculate statistical significance: is the edge real (p < 0.05) or could it be luck?"},
+    {week:"Week 2–3",title:"Stress testing — known crises",body:"Replay system through: 2020 COVID crash (Feb–Apr), 2022 Russia-Ukraine market open (Feb 24), 2023 SVB collapse (Mar 10), 2018 VIX spike (Feb 5). In each event: does the Rust kill switch trigger? Does NN3 correctly detect crisis regime? What is the maximum drawdown experienced? Document all results."},
+    {week:"Week 3–4",title:"SHAP explainability layer",body:"Add SHAP values to NN1 and NN5. For every trade decision, compute which features drove the signal. Build explanation API endpoint: GET /explain/{trade_id} returns feature contributions. This is critical for: investor trust, regulatory compliance, debugging wrong trades."},
+    {week:"Week 4–5",title:"Conformal prediction bounds",body:"Add conformal prediction intervals to NN1 price predictions. For each prediction: 'Price will be in [X, Y] with 95% guaranteed coverage.' Run coverage test on holdout data — does the interval actually contain the true price 95% of the time? If calibration fails, fix it. This becomes a selling point."},
+    {week:"Week 5–6",title:"Independent data validation",body:"Get someone else to verify: give them your backtest code and a different historical data source. Do the results reproduce? Have a quantitative finance professional review your walk-forward methodology. Pay ₹10,000–₹20,000 for an independent review. Their sign-off is valuable for investor pitches."},
+    {week:"Week 6–8",title:"Investor pitch preparation",body:"Build pitch deck: architecture overview, track record, backtesting methodology, risk management, team (solo). Build a demo: live dashboard showing system running in real-time on paper trades. Record a 10-minute demo video. Write a 2-page executive summary. Identify 10 target HNI investors and family offices."}
+  ],
+  deliverables:["Walk-forward backtest: 10+ windows, statistical significance p < 0.05","Stress test report: drawdown in each crisis event documented","SHAP explanation for every live trade decision","Conformal prediction coverage: 95.x% on 1,000+ holdout predictions","Independent validation: third party confirms backtest methodology is sound","Investor pitch deck and 10-minute demo video","List of 10 target investors with contact plan"],
+  exit:"If walk-forward Sharpe average is below 0.8, or any single 6-month window has Sharpe below 0, do NOT proceed to deployment with real capital. Go back and fix the models. A single good period is not a strategy — consistency across all windows is the proof."
+},
+{
+  title:"Cloud deployment, monitoring, live trading, monetization",
+  badge:"Deployment",badgeColor:"#EAF3DE",badgeText:"#27500A",
+  months:"Months 24–26",weeks:"8 weeks",cost:"Cloud infra: ₹15,000–₹40,000/month",earn:"Phase 1 revenue target: ₹2L–₹5L/month recurring (subscriptions + B2B + consulting). Phase 2 target (month 30+): raise ₹1–5Cr AUM = ₹20L–₹1Cr/year in fees.",
+  tools:["AWS EC2 / GCP (GPU instance)","Nginx reverse proxy","Let's Encrypt SSL","Systemd service units","Grafana Cloud","PagerDuty alerts","Cloudflare","Stripe / Razorpay"],
+  tasks:[
+    {week:"Week 1–2",title:"Cloud infrastructure setup",body:"Provision AWS EC2 g4dn.xlarge (1× T4 GPU, 16GB RAM, 4 vCPU) for NNs. Separate r5.large for Rust engine (CPU-optimized). TimescaleDB on RDS. Redis on ElastiCache. Set up VPC with private subnets. Configure security groups: only port 443 exposed. Set up SSL with Certbot."},
+    {week:"Week 2–3",title:"Production deployment",body:"Write systemd service units for: rust-engine.service, nn-inference.service, fastapi.service, kafka.service, model-retrain.timer (weekly). Deploy with Docker Compose on EC2. Set up automatic restart on failure. Test: kill each service, verify auto-restart within 30 seconds."},
+    {week:"Week 3–4",title:"Production monitoring",body:"Grafana dashboard: tick throughput, NN latency, PnL, open positions, risk metrics. PagerDuty alerts: system down > 2 min, drawdown > 3%, WebSocket disconnect > 30 seconds. Daily summary email: PnL, signals issued, system uptime. Weekly model performance report auto-generated."},
+    {week:"Week 4–5",title:"Live trading — small capital",body:"Start with ₹1,00,000 (₹1 lakh) real capital. Maximum position size: ₹10,000 per trade. Run for 30 days. Confirm: are live results within 20% of paper trading results? If there's a large gap, find and fix the cause (slippage, data differences, timing). Only scale after 30 days confirms parity."},
+    {week:"Week 5–6",title:"Signal product launch",body:"Launch paid Telegram/Discord channel. Pricing: ₹999/month (signal alerts) and ₹3,999/month (full API access). Use Razorpay for payments. Write onboarding docs. First 20 members get 50% discount. Post about it in r/IndiaInvestments, Twitter/X, LinkedIn. Target: 100 subscribers in first 30 days."},
+    {week:"Week 6–8",title:"B2B outreach",body:"Email 20 Indian brokerages and wealth tech startups about signal API licensing. Pitch: 'AI-powered investment recommendations for your platform — white-label, API-first.' Send detailed technical overview + 6-month track record. Target: 1 pilot agreement within 60 days. Pilot at ₹2,00,000–₹5,00,000 for 3-month proof of concept."}
+  ],
+  deliverables:["Production system: 99.5% uptime in first 30 days","Live trading: 30-day real-capital results within 20% of paper performance","Signal subscription: 100+ paying subscribers","At least 1 B2B pilot conversation in progress","Complete documentation: architecture, API docs, risk disclosures","SEBI registration consultation completed (understand the regulatory path)","Monthly P&L report: all revenue streams tracked"],
+  exit:"Deployment is not 'done' — it is the beginning of the operation phase. The system needs weekly attention: model performance monitoring, data quality checks, market regime awareness, and regular retraining. Budget 10–15 hours per week for operations from this point forward."
+}
+];
+
+let current = 0;
+
+function render(){
+  const p = phases[current];
+  const pct = Math.round((current+1)/phases.length*100);
+  document.getElementById('prog').style.width = pct+'%';
+  document.querySelectorAll('.tl-phase').forEach((el,i)=>{
+    el.classList.toggle('active', i===current);
+  });
+  document.getElementById('phase-counter').textContent = 'Phase '+(current+1)+' of '+phases.length;
+  document.getElementById('btn-prev').disabled = current===0;
+  document.getElementById('btn-next').disabled = current===phases.length-1;
+
+  const tasks = p.tasks.map(t=>`
+    <div class="task-card" onclick="sendPrompt('Give me complete implementation details for: ${t.title} in the quant system build plan')">
+      <div class="tc-week">${t.week}</div>
+      <div class="tc-title">${t.title}</div>
+      <div class="tc-body">${t.body}</div>
+    </div>
+  `).join('');
+
+  const dels = p.deliverables.map(d=>`
+    <div class="del-item">
+      <div class="del-check"></div>
+      <span>${d}</span>
+    </div>
+  `).join('');
+
+  const tools = p.tools.map(t=>`<span class="tool-pill">${t}</span>`).join('');
+
+  document.getElementById('phase-content').innerHTML = `
+    <div class="phase-card">
+      <div class="phase-header">
+        <div class="ph-top">
+          <span class="ph-badge" style="background:${p.badgeColor};color:${p.badgeText}">${p.badge}</span>
+          <span class="ph-title">${p.title}</span>
+        </div>
+        <div class="ph-meta">
+          <span>${p.months}</span>
+          <span>${p.weeks}</span>
+          <span>Cost: ${p.cost}</span>
+        </div>
+      </div>
+      <div class="phase-body">
+        <div class="section-label">Weekly tasks (click any for full implementation details)</div>
+        <div class="task-grid">${tasks}</div>
+
+        <div class="section-label">Tech stack for this phase</div>
+        <div class="tools-row">${tools}</div>
+
+        <div class="section-label">Deliverables checklist</div>
+        <div class="deliverables">${dels}</div>
+
+        <div class="section-label">Phase exit criteria</div>
+        <div class="exit-box"><b>Do not proceed until:</b> ${p.exit}</div>
+
+        <div class="section-label">Revenue in this phase</div>
+        <div class="earn-box">${p.earn}</div>
+      </div>
+    </div>
+  `;
+}
+
+function goPhase(i){ current=i; render(); }
+function nextPhase(){ if(current<phases.length-1){current++;render();} }
+function prevPhase(){ if(current>0){current--;render();} }
+
+render();
+</script>
