@@ -1,0 +1,132 @@
+
+<style>
+.add-section { margin-bottom: 1.4rem; }
+.add-label { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 8px; padding: 4px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.add-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.add-card { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 11px 13px; cursor: pointer; transition: border-color 0.15s; }
+.add-card:hover { border-color: var(--color-border-primary); }
+.add-badge { font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 8px; display: inline-block; margin-bottom: 5px; }
+.add-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 3px; }
+.add-body { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; }
+.add-impact { font-size: 11px; color: var(--color-text-success); margin-top: 5px; font-weight: 500; }
+</style>
+
+<div class="add-section">
+  <div class="add-label">Frontier: model architecture upgrades</div>
+  <div class="add-grid">
+    <div class="add-card" onclick="sendPrompt('Explain Temporal Fusion Transformer for financial time series prediction in depth')">
+      <span class="add-badge" style="background:#EEEDFE;color:#3C3489">Replace NN1</span>
+      <div class="add-title">Temporal Fusion Transformer (TFT)</div>
+      <div class="add-body">Purpose-built for multi-horizon time series with mixed-frequency inputs. Variable selection network automatically weights which features matter. Interpretable attention across time steps. Google Brain paper showed 36% improvement over LSTM on financial data.</div>
+      <div class="add-impact">Impact: +15–25% prediction accuracy on NN1</div>
+    </div>
+    <div class="add-card" onclick="sendPrompt('Explain N-BEATS neural basis expansion for stock price forecasting')">
+      <span class="add-badge" style="background:#EEEDFE;color:#3C3489">Ensemble NN1</span>
+      <div class="add-title">N-BEATS / N-HiTS architecture</div>
+      <div class="add-body">Basis expansion approach — decomposes price series into interpretable trend and seasonality components automatically. No explicit feature engineering. N-HiTS (2022) extends this to hierarchical multi-scale sampling, dramatically reducing inference cost on long sequences.</div>
+      <div class="add-impact">Impact: interpretable price decomposition</div>
+    </div>
+    <div class="add-card" onclick="sendPrompt('How does graph neural network model stock market correlations and sector relationships?')">
+      <span class="add-badge" style="background:#E1F5EE;color:#085041">New NN6</span>
+      <div class="add-title">Graph Neural Network (GNN) for correlations</div>
+      <div class="add-body">Model the stock market as a dynamic graph: nodes = stocks, edges = rolling correlations + sector membership. GNN propagates information along edges — if AAPL moves, MSFT node updates. Captures contagion effects that independent models miss entirely.</div>
+      <div class="add-impact">Impact: cross-asset signal propagation</div>
+    </div>
+    <div class="add-card" onclick="sendPrompt('What is a Generative Adversarial Network for synthetic financial time series data augmentation?')">
+      <span class="add-badge" style="background:#FAECE7;color:#712B13">Data aug</span>
+      <div class="add-title">FinGAN — synthetic data generation</div>
+      <div class="add-body">Train a Wasserstein GAN conditioned on market regime to generate realistic synthetic tick sequences. Use generated data to augment rare market conditions (flash crashes, short squeezes) which have too few real samples for training. Dramatically improves tail-risk behavior of NN4.</div>
+      <div class="add-impact">Impact: better rare-event risk modeling</div>
+    </div>
+  </div>
+</div>
+
+<div class="add-section">
+  <div class="add-label">Frontier: uncertainty and risk</div>
+  <div class="add-grid">
+    <div class="add-card" onclick="sendPrompt('Explain conformal prediction for guaranteed coverage intervals in financial forecasting')">
+      <span class="add-badge" style="background:#FCEBEB;color:#791F1F">Reliability</span>
+      <div class="add-title">Conformal Prediction intervals</div>
+      <div class="add-body">Distribution-free method giving statistically guaranteed prediction intervals — "price will be in [X, Y] with 95% coverage" with a mathematical guarantee, not just empirical confidence. Works on top of any model. Unlike MC Dropout, requires no Bayesian assumptions. 2023 research shows strong results on equities.</div>
+      <div class="add-impact">Impact: legally defensible uncertainty bounds</div>
+    </div>
+    <div class="add-card" onclick="sendPrompt('Explain deep kernel learning for Gaussian Process uncertainty quantification in quant finance')">
+      <span class="add-badge" style="background:#FCEBEB;color:#791F1F">Uncertainty</span>
+      <div class="add-title">Deep kernel Gaussian Processes (DKL)</div>
+      <div class="add-body">A deep neural network extracts features; a Gaussian Process on top provides principled uncertainty. Unlike MC Dropout, GP uncertainty grows in unexplored regions of the feature space — much better calibrated for regime shifts the model hasn't seen before.</div>
+      <div class="add-impact">Impact: superior uncertainty during regime shifts</div>
+    </div>
+    <div class="add-card" onclick="sendPrompt('What is Conditional Value at Risk CVaR and how does it improve on standard VaR for portfolio risk?')">
+      <span class="add-badge" style="background:#FCEBEB;color:#791F1F">Risk</span>
+      <div class="add-title">CVaR / Expected Shortfall optimization</div>
+      <div class="add-body">Replace VaR with CVaR (average loss in the worst X% of scenarios) as the optimization target. CVaR is convex — optimizable via linear programming. Coherent risk measure unlike VaR. Dramatically better tail-risk behavior, especially in fat-tailed financial distributions.</div>
+      <div class="add-impact">Impact: 30-50% reduction in tail-risk exposure</div>
+    </div>
+    <div class="add-card" onclick="sendPrompt('Explain distributional RL with C51 or QR-DQN for risk-aware portfolio management')">
+      <span class="add-badge" style="background:#EAF3DE;color:#27500A">RL upgrade</span>
+      <div class="add-title">Distributional RL (QR-DQN / IQN)</div>
+      <div class="add-body">Instead of predicting expected return, predict the full return distribution. Implicit Quantile Networks (IQN) can then optimize for any quantile — e.g., "maximize 10th percentile return" for risk-averse investors. Fundamentally different from standard PPO's expected-value objective.</div>
+      <div class="add-impact">Impact: investor risk-tolerance encoded into RL objective</div>
+    </div>
+  </div>
+</div>
+
+<div class="add-section">
+  <div class="add-label">Frontier: training methodology</div>
+  <div class="add-grid">
+    <div class="add-card" onclick="sendPrompt('Explain meta-learning MAML for few-shot adaptation to new stock markets and assets')">
+      <span class="add-badge" style="background:#FAEEDA;color:#633806">Training</span>
+      <div class="add-title">MAML — meta-learning for new markets</div>
+      <div class="add-body">Model-Agnostic Meta-Learning trains the model to be quickly fine-tunable. When your system encounters a new stock or market (e.g., adding an Indian mid-cap), MAML can adapt NN1 in 5–10 gradient steps rather than retraining from scratch — critical for scaling to hundreds of symbols.</div>
+      <div class="add-impact">Impact: fast adaptation to new assets</div>
+    </div>
+    <div class="add-card" onclick="sendPrompt('Explain continual online learning and catastrophic forgetting prevention for HFT models')">
+      <span class="add-badge" style="background:#FAEEDA;color:#633806">Training</span>
+      <div class="add-title">Online continual learning (EWC / PackNet)</div>
+      <div class="add-body">Markets shift regime. Standard NNs forget old patterns when retrained on new data (catastrophic forgetting). Elastic Weight Consolidation (EWC) adds a Fisher-information regularizer that protects important weights from old tasks — models can learn from new data without forgetting bear-market behavior.</div>
+      <div class="add-impact">Impact: no retraining from scratch on regime change</div>
+    </div>
+    <div class="add-card" onclick="sendPrompt('What is self-supervised pre-training for financial time series using contrastive learning?')">
+      <span class="add-badge" style="background:#FAEEDA;color:#633806">Training</span>
+      <div class="add-title">Contrastive self-supervised pre-training</div>
+      <div class="add-body">Pre-train NN1's encoder on massive unlabeled tick data using contrastive objectives (similar market conditions should have nearby embeddings; different conditions far apart). Like ImageNet pre-training for vision — gives NN1 a far better feature representation before any supervised fine-tuning.</div>
+      <div class="add-impact">Impact: +20% data efficiency in fine-tuning</div>
+    </div>
+    <div class="add-card" onclick="sendPrompt('How does curriculum learning improve training stability for financial RL agents?')">
+      <span class="add-badge" style="background:#FAEEDA;color:#633806">Training</span>
+      <div class="add-title">Curriculum learning for NN5 RL agent</div>
+      <div class="add-body">Train NN5 on easy market scenarios first (bull market, low volatility), progressively introducing harder ones (flash crashes, earnings gaps, black swan events). Prevents the RL agent from learning degenerate strategies on hard scenarios early. Research shows 40% faster convergence.</div>
+      <div class="add-impact">Impact: more stable PPO training convergence</div>
+    </div>
+  </div>
+</div>
+
+<div class="add-section">
+  <div class="add-label">Frontier: inference and execution</div>
+  <div class="add-grid">
+    <div class="add-card" onclick="sendPrompt('Explain FPGA deployment for sub-microsecond neural network inference in HFT')">
+      <span class="add-badge" style="background:#E6F1FB;color:#0C447C">Execution</span>
+      <div class="add-title">FPGA NN inference deployment</div>
+      <div class="add-body">Quantize NN1 to INT8 and deploy on an FPGA (e.g., Xilinx Alveo). FPGA inference latency: 100–500 nanoseconds vs 5–10 milliseconds on GPU. At true HFT scale (co-located with exchange), this latency difference determines whether you capture the alpha signal before competitors. Rust handles FPGA communication via PCIe.</div>
+      <div class="add-impact">Impact: 20–100× inference latency reduction</div>
+    </div>
+    <div class="add-card" onclick="sendPrompt('How does ONNX runtime TensorRT quantization speed up neural network inference for trading?')">
+      <span class="add-badge" style="background:#E6F1FB;color:#0C447C">Inference</span>
+      <div class="add-title">TensorRT + INT8 model quantization</div>
+      <div class="add-body">Export all 5 PyTorch models to ONNX, then compile with NVIDIA TensorRT + INT8 post-training quantization. Typical result: 4–8× inference speedup with &lt;0.5% accuracy loss. Critical when NN inference must complete before the next tick arrives (100ms windows at liquid markets).</div>
+      <div class="add-impact">Impact: 4–8× faster batch inference</div>
+    </div>
+    <div class="add-card" onclick="sendPrompt('Explain optimal execution algorithms TWAP VWAP and Almgren-Chriss for minimizing market impact')">
+      <span class="add-badge" style="background:#E6F1FB;color:#0C447C">Execution</span>
+      <div class="add-title">Almgren-Chriss optimal execution in Rust</div>
+      <div class="add-body">Once NN5 decides to buy X shares of AAPL, the execution engine must minimize market impact by slicing the order optimally over time. Almgren-Chriss model (implemented in Rust, naturally) gives the closed-form optimal trajectory balancing execution risk vs market impact cost.</div>
+      <div class="add-impact">Impact: 10–30% reduction in slippage cost</div>
+    </div>
+    <div class="add-card" onclick="sendPrompt('What is explainability SHAP for financial AI models and why is it important for investors?')">
+      <span class="add-badge" style="background:#FBEAF0;color:#72243E">Trust</span>
+      <div class="add-title">SHAP explainability layer</div>
+      <div class="add-body">Add SHAP (SHapley Additive exPlanations) to every NN decision. Each BUY/SELL recommendation shows the investor exactly which features drove the decision: "RSI oversold contributed 34%, negative earnings sentiment contributed 28%, regime is bullish contributed 21%." Builds investor trust and satisfies regulatory explainability requirements.</div>
+      <div class="add-impact">Impact: investor trust + regulatory compliance</div>
+    </div>
+  </div>
+</div>
