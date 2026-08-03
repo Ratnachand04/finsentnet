@@ -1,0 +1,177 @@
+# FinSentNet Configuration
+# ========================
+
+project:
+  name: "FinSentNet"
+  seed: 42
+  device: "cuda"  # "cuda" or "cpu"
+  precision: "fp32"  # "fp16" for mixed precision
+
+# ─── Data ────────────────────────────────────────────────────────────
+data:
+  # Price data
+  tickers: ["AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA", "JPM", "BAC", "GS"]
+  price_window: 30          # lookback window in trading days
+  price_features: 15        # OHLCV(5) + RSI, MACD, Signal, BB_upper, BB_lower, BB_mid, ATR, OBV, VWAP, Returns(15)
+  start_date: "2010-01-01"
+  end_date: "2024-12-31"
+  
+  # Text data
+  max_seq_length: 512
+  vocab_size: 50000
+  min_word_freq: 5
+  
+  # Splits (walk-forward)
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  
+  # Temporal alignment
+  max_news_lag_hours: 24    # news must precede price by at least this many hours
+  news_lookback_hours: 72   # aggregate news from past N hours
+  
+# ─── Text Branch (V2 — 6-Layer FinBERT Pipeline) ─────────────────────
+text_branch:
+  # Layer 1 & 2: FinBERT Tokenizer + Embeddings
+  finbert_model: "yiyanghkust/finbert-pretrain"
+  finbert_embedding_dim: 768
+  finbert_frozen_layers: 2           # fine-tune last 2 transformer layers
+  max_seq_length: 512
+
+  # Layer 3: TextCNN (parallel multi-scale Conv1D)
+  cnn_filter_sizes: [2, 3, 4, 5]
+  cnn_num_filters: 128               # per kernel size → 128×4 = 512
+
+  # Layer 4: Stacked Bidirectional LSTM
+  lstm_hidden_dim: 256               # per direction → 256×2 = 512
+  lstm_num_layers: 3
+  lstm_dropout: 0.3                  # variational (locked) dropout
+
+  # Layer 5: Multi-Head Self-Attention
+  attention_heads: 8                 # d_k = d_v = 512/8 = 64
+  attention_dropout: 0.1
+
+  # Layer 6: Sentence Representation
+  output_dim: 512                    # CLS + MeanPool → 512-dim
+
+  # General
+  dropout: 0.3
+
+# ─── Price Branch (V2 — 5-Layer Pipeline) ────────────────────────────
+price_branch:
+  # Layer 1: Input Normalization
+  rolling_norm_window: 252            # 1 trading year for z-score
+
+  # Layer 2: Multi-Scale Conv1D
+  conv_kernel_sizes: [3, 7, 15]       # 3-day, weekly, monthly patterns
+  conv_n_filters: 64                  # per kernel → 64×3 = 192-dim
+
+  # Layer 3: Dilated Temporal CNN
+  dilated_kernel_size: 3
+  dilation_rates: [1, 2, 4, 8]        # receptive field ~30+ days
+
+  # Layer 4: LSTM Price Encoder
+  lstm_hidden: 256                    # captures momentum, mean reversion
+  lstm_layers: 2
+  lstm_dropout: 0.2
+
+  # Layer 5: Price Context Vector
+  output_dim: 512                     # projected to match text branch
+
+# ─── Cross-Modal Attention Fusion ────────────────────────────────────
+fusion:
+  d_model: 512                      # updated to match branch outputs
+  num_heads: 8
+  num_layers: 3
+  dropout: 0.1
+  feedforward_dim: 1024              # 2× d_model
+
+# ─── Dual-Head Output ───────────────────────────────────────────────
+dual_head:
+  # Direction head
+  direction_classes: 3       # Up / Down / Neutral
+  neutral_threshold: 0.005   # |return| < threshold → neutral
+  target_horizon: "24h"      # target horizon for return calculation
+  
+  # Confidence head
+  confidence_bins: 5         # discretized confidence levels
+  temperature_init: 1.5      # temperature scaling initialization
+
+# ─── GAN Augmentation ───────────────────────────────────────────────
+gan:
+  generator:
+    noise_dim: 128
+    hidden_dims: [256, 512, 256]
+    output_dim: -1  # auto: price_window * price_features
+  
+  discriminator:
+    hidden_dims: [256, 512, 256]
+  
+  training:
+    n_critic: 5              # WGAN-GP: critic steps per generator step
+    lambda_gp: 10.0          # gradient penalty coefficient
+    lr_g: 0.0001
+    lr_d: 0.0004
+    beta1: 0.0
+    beta2: 0.9
+    epochs: 200
+    batch_size: 64
+  
+  # Regime conditioning
+  regimes: ["bull", "bear", "crisis", "high_vol", "low_vol"]
+
+# ─── Training ───────────────────────────────────────────────────────
+training:
+  epochs: 100
+  batch_size: 64
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  
+  # Optimizer
+  optimizer: "adamw"
+  scheduler: "cosine_warmup"
+  warmup_epochs: 5
+  
+  # Loss
+  focal_loss_gamma: 2.0
+  focal_loss_alpha: [0.3, 0.4, 0.3]  # Up, Neutral, Down weights
+  direction_loss_weight: 0.7
+  confidence_loss_weight: 0.3
+  
+  # Regularization
+  label_smoothing: 0.05
+  gradient_clip_norm: 1.0
+  
+  # Early stopping
+  patience: 15
+  monitor: "val_sharpe"     # stop on financial metric, not loss
+  
+  # Class imbalance
+  use_class_weights: true
+  temporal_stratified_sampling: true
+
+# ─── Backtesting ────────────────────────────────────────────────────
+backtest:
+  initial_capital: 1000000.0
+  commission_bps: 5          # 5 basis points per trade
+  slippage_bps: 2            # 2 basis points slippage
+  max_position_pct: 0.10     # max 10% in single position
+  max_leverage: 1.0          # no leverage initially
+  rebalance_freq: "daily"
+  
+  # Position sizing
+  sizing_method: "kelly"     # "kelly", "equal_weight", "volatility_parity"
+  kelly_fraction: 0.25       # quarter-Kelly for safety
+  
+  # Risk limits
+  max_drawdown_pct: 0.15     # halt if drawdown > 15%
+  daily_var_limit: 0.02      # 2% daily VaR limit
+  correlation_limit: 0.7     # max pairwise correlation
+
+# ─── Portfolio Optimization ─────────────────────────────────────────
+portfolio:
+  method: "mean_variance"    # "mean_variance", "risk_parity", "black_litterman"
+  risk_free_rate: 0.05       # annualized
+  target_volatility: 0.15    # 15% annualized vol target
+  rebalance_window: 21       # trading days
+  covariance_method: "ledoit_wolf"  # shrinkage estimator
