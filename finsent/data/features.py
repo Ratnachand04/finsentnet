@@ -1,9 +1,33 @@
 """
-Technical indicator computation — vectorized, zero look-ahead.
-=============================================================
+Technical indicator computation — vectorized, causal per indicator.
+===================================================================
 
-All indicators are computed using ONLY past data at each point t.
-No future information leaks into any feature.
+Legacy V2 module, retained because ``finsent/data/pipeline.py`` and the finsentnet_pro
+application still import it. New research work uses
+``finsent.data.features_causal``.
+
+CORRECTION TO AN EARLIER CLAIM IN THIS FILE
+-------------------------------------------
+This module previously opened by asserting "zero look-ahead / No future information
+leaks into any feature". That is true **per indicator** — every function below reads only
+``close[:t+1]`` — and it was false **at the pipeline level**, which is the level that
+matters.
+
+The reason: an indicator dated ``t`` is computed from day ``t``'s *close*, but a decision
+executed at day ``t``'s *open* happens before that close. Decomposing an open-to-open
+forward return into close-to-close terms,
+
+    log(O[t+h] / O[t]) = r[t] + r[t+1] + ... + r[t+h-1] + overnight terms
+    a 5-day trailing return at t = r[t-4] + ... + r[t]
+
+the two share ``r[t]``. On pure random-walk data that overlap alone gave a 5-day return
+feature a cross-sectional rank information coefficient of 0.108 — roughly five times a
+realistic value, entirely spurious, and invisible to any train/test splitter because the
+contamination travels inside the row rather than across the boundary.
+
+``compute_all_features`` therefore applies a one-session execution lag **by default**.
+Pass ``execution_lag=0`` only if decisions are executed at the close of ``t`` and labels
+are measured from ``t+1`` onward, and state that convention wherever the results appear.
 
 Implemented from scratch using NumPy for transparency and control.
 No TA-Lib or similar black boxes.
@@ -12,6 +36,22 @@ No TA-Lib or similar black boxes.
 import numpy as np
 import pandas as pd
 from typing import Tuple
+
+# Columns derived from prices. These are the model inputs that must respect the
+# execution lag; the raw OHLCV columns are left untouched because downstream code uses
+# them to compute labels and execution prices.
+DERIVED_FEATURE_COLUMNS = (
+    "Returns",
+    "RSI",
+    "MACD",
+    "MACD_Signal",
+    "BB_Upper",
+    "BB_Mid",
+    "BB_Lower",
+    "ATR",
+    "OBV",
+    "VWAP",
+)
 
 
 def compute_returns(close: np.ndarray, period: int = 1) -> np.ndarray:
@@ -175,13 +215,47 @@ def compute_vwap(
     return vwap
 
 
-def compute_all_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute full feature set from OHLCV DataFrame.
-    
-    Input columns: Open, High, Low, Close, Volume
-    Output: Original columns + 10 technical indicators = 15 features.
-    
-    All features are strictly causal (no look-ahead).
+def lag_for_open_execution(
+    df: pd.DataFrame,
+    columns: tuple[str, ...] = DERIVED_FEATURE_COLUMNS,
+    sessions: int = 1,
+) -> pd.DataFrame:
+    """Shift derived features forward so they respect an open-executed decision.
+
+    A feature dated ``t`` is computed from day ``t``'s close; a decision executed at day
+    ``t``'s open precedes it. Without this shift the feature and the label share day
+    ``t``'s return — see the module docstring for the arithmetic and the measured size
+    of the effect.
+
+    Raw OHLCV columns are deliberately **not** shifted: downstream code uses them for
+    labels and execution prices, where the unshifted values are correct. If OHLCV also
+    enters the model's input window, lag those copies too.
+    """
+    if sessions < 0:
+        raise ValueError("execution lag cannot be negative")
+    if sessions == 0:
+        return df
+
+    out = df.copy()
+    present = [c for c in columns if c in out.columns]
+    out[present] = out[present].shift(sessions)
+    return out
+
+
+def compute_all_features(df: pd.DataFrame, execution_lag: int = 1) -> pd.DataFrame:
+    """Compute full feature set from an OHLCV DataFrame.
+
+    Input columns: Open, High, Low, Close, Volume.
+    Output: original columns + 10 technical indicators.
+
+    Each indicator is causal in isolation. ``execution_lag`` additionally aligns them to
+    the decision timestamp: the default of 1 assumes execution at the **open** of day
+    ``t``, so features may use information only through the close of ``t-1``.
+
+    Pass ``execution_lag=0`` only when decisions execute at the close of ``t`` and labels
+    are measured from ``t+1`` onward. That convention is defensible, but it has to be
+    stated explicitly wherever the numbers are reported — leaving it implicit is how the
+    0.108 spurious IC described in the module docstring went unnoticed.
     """
     close = df["Close"].values.astype(np.float64)
     high = df["High"].values.astype(np.float64)
@@ -213,8 +287,8 @@ def compute_all_features(df: pd.DataFrame) -> pd.DataFrame:
     
     # VWAP
     df["VWAP"] = compute_vwap(high, low, close, volume)
-    
-    return df
+
+    return lag_for_open_execution(df, sessions=execution_lag)
 
 
 def normalize_features(
