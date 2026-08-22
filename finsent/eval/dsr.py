@@ -21,6 +21,8 @@ __all__ = [
     "deflated_sharpe_ratio",
     "minimum_track_record_length",
     "DSRResult",
+    "PBOResult",
+    "probability_of_backtest_overfitting",
 ]
 
 _EPS = 1e-12
@@ -182,3 +184,116 @@ def minimum_track_record_length(
     z = sps.norm.ppf(confidence)
     numer = 1.0 - skew * sr + 0.25 * (kurt - 1.0) * sr**2
     return float(1.0 + max(numer, _EPS) * (z / (sr - benchmark_sr)) ** 2)
+
+# --------------------------------------------------------------------------------------
+# Probability of Backtest Overfitting
+# --------------------------------------------------------------------------------------
+@dataclass(frozen=True)
+class PBOResult:
+    """Combinatorially symmetric cross-validation result (Bailey et al., 2017)."""
+
+    pbo: float
+    n_combinations: int
+    n_strategies: int
+    n_periods: int
+    median_logit: float
+    oos_degradation: float
+
+    def to_dict(self) -> dict[str, float | int]:
+        return asdict(self)
+
+    def verdict(self) -> str:
+        if not np.isfinite(self.pbo):
+            return "undetermined"
+        if self.pbo <= 0.10:
+            return "selection procedure appears sound"
+        if self.pbo <= 0.50:
+            return "material overfitting risk"
+        return "the selection procedure is overfitting; the winner is noise"
+
+
+def probability_of_backtest_overfitting(
+    returns_matrix: np.ndarray,
+    n_blocks: int = 10,
+    metric: str = "sharpe",
+) -> PBOResult:
+    """PBO by combinatorially symmetric cross-validation.
+
+    The question this answers is not "is my best strategy good?" but "does my *selection
+    procedure* pick winners that stay winners?". The sample is cut into ``n_blocks``
+    contiguous blocks; every balanced split into in-sample and out-of-sample halves is
+    enumerated; in each split the strategy with the best in-sample metric is chosen, and
+    its **rank among all strategies out-of-sample** is recorded. If choosing the
+    in-sample winner is no better than choosing at random, that rank sits at the median
+    half the time and PBO approaches 0.5.
+
+    Both referee reports on the predecessor of this work asked for this statistic
+    specifically, because a paper that evaluates a dozen configurations on one slice and
+    reports the best has performed a selection whose reliability is unmeasured.
+
+    Parameters
+    ----------
+    returns_matrix
+        ``(n_periods, n_strategies)`` per-period returns, one column per configuration.
+    n_blocks
+        Number of contiguous blocks; must be even. ``C(n_blocks, n_blocks/2)``
+        combinations are enumerated, so 10 gives 252 and 16 gives 12,870.
+    """
+    from itertools import combinations
+
+    M = np.asarray(returns_matrix, dtype=float)
+    if M.ndim != 2:
+        raise ValueError(f"returns_matrix must be (n_periods, n_strategies); got {M.shape}")
+    n_periods, n_strategies = M.shape
+    if n_strategies < 2:
+        raise ValueError("PBO requires at least two competing strategies")
+    if n_blocks % 2 != 0:
+        raise ValueError("n_blocks must be even so the split is symmetric")
+    if n_periods < n_blocks * 4:
+        raise ValueError(
+            f"{n_periods} periods is too few for {n_blocks} blocks; use fewer blocks"
+        )
+
+    bounds = np.linspace(0, n_periods, n_blocks + 1).astype(int)
+    blocks = [np.arange(bounds[i], bounds[i + 1]) for i in range(n_blocks)]
+
+    def score(sub: np.ndarray) -> np.ndarray:
+        if metric == "sharpe":
+            sd = sub.std(axis=0, ddof=1)
+            return np.where(sd > _EPS, sub.mean(axis=0) / np.maximum(sd, _EPS), -np.inf)
+        return sub.mean(axis=0)
+
+    logits: list[float] = []
+    degradations: list[float] = []
+
+    for combo in combinations(range(n_blocks), n_blocks // 2):
+        is_idx = np.concatenate([blocks[i] for i in combo])
+        oos_idx = np.concatenate([blocks[i] for i in range(n_blocks) if i not in combo])
+
+        is_score = score(M[is_idx])
+        oos_score = score(M[oos_idx])
+        if not np.isfinite(is_score).any() or not np.isfinite(oos_score).any():
+            continue
+
+        best = int(np.nanargmax(is_score))
+        # Rank of the in-sample winner among out-of-sample results, 1 = worst.
+        order = np.argsort(np.argsort(oos_score))
+        rank = float(order[best]) + 1.0
+
+        omega = rank / (n_strategies + 1.0)
+        omega = float(np.clip(omega, 1e-6, 1 - 1e-6))
+        logits.append(float(np.log(omega / (1.0 - omega))))
+        degradations.append(float(oos_score[best] - np.nanmax(oos_score)))
+
+    if not logits:
+        return PBOResult(np.nan, 0, n_strategies, n_periods, np.nan, np.nan)
+
+    arr = np.asarray(logits, dtype=float)
+    return PBOResult(
+        pbo=float((arr <= 0.0).mean()),
+        n_combinations=int(arr.size),
+        n_strategies=int(n_strategies),
+        n_periods=int(n_periods),
+        median_logit=float(np.median(arr)),
+        oos_degradation=float(np.mean(degradations)),
+    )
