@@ -141,3 +141,52 @@ def test_performance_summary_reports_every_field_table_six_needs():
     summary = M.performance_summary(r, weights=np.tile([0.5, -0.5], (500, 1)))
     for key in ("sharpe", "sortino", "max_drawdown", "calmar", "hit_rate", "turnover"):
         assert key in summary, f"performance_summary is missing {key}"
+
+
+# --------------------------------------------------------------------------------------
+# Sortino: the denominator both referee reports flagged
+# --------------------------------------------------------------------------------------
+def test_downside_deviation_averages_over_all_periods_not_only_losses():
+    """``std(r | r < 0)`` is the wrong denominator and inflates Sortino.
+
+    Downside deviation is ``sqrt(mean(min(r - MAR, 0)^2))`` over **all** periods. Taking
+    the standard deviation of the losing periods about their own mean instead measures
+    the dispersion of the losses rather than their magnitude against the target, and is
+    systematically smaller -- more so as losses become rarer.
+    """
+    # Four periods, one loss of -0.02. Correct: sqrt(0.0004/4) = 0.01.
+    r = np.array([0.01, 0.01, 0.01, -0.02])
+    assert M.downside_deviation(r) == pytest.approx(0.01)
+
+    wrong = float(np.std(r[r < 0], ddof=0))  # zero: a single loss has no dispersion
+    assert wrong < M.downside_deviation(r)
+
+
+def test_sortino_is_not_inflated_relative_to_sharpe_on_symmetric_returns():
+    """On symmetric returns the two ratios should be of comparable magnitude.
+
+    Under the old denominator Sortino ran several times Sharpe on any series with
+    infrequent losses, which is what produced the implausible 2.07 in the predecessor
+    paper's Table 1 beside a Sharpe of 1.48.
+    """
+    rng = np.random.default_rng(0)
+    r = rng.standard_normal(4000) * 0.01 + 0.0005
+
+    sharpe = M.sharpe_ratio(r)
+    sortino = M.sortino_ratio(r)
+    assert 0.8 < sortino / sharpe < 2.0, f"sharpe={sharpe:.3f} sortino={sortino:.3f}"
+
+
+def test_sortino_rewards_upside_asymmetry():
+    """A right-skewed series must score better on Sortino than on Sharpe."""
+    rng = np.random.default_rng(1)
+    base = rng.standard_normal(4000) * 0.01
+    skewed = base + 0.03 * (rng.random(4000) < 0.02)  # rare large gains only
+
+    assert M.sortino_ratio(skewed) > M.sharpe_ratio(skewed)
+
+
+def test_sortino_matches_a_hand_computed_value():
+    r = np.array([0.02, -0.01, 0.03, -0.02, 0.01])
+    dd = np.sqrt(np.mean(np.minimum(r, 0.0) ** 2))
+    assert M.sortino_ratio(r) == pytest.approx(r.mean() / dd * np.sqrt(252))
