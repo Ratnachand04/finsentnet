@@ -35,6 +35,7 @@ __all__ = [
     "expected_calibration_error",
     "reliability_curve",
     "sharpe_ratio",
+    "downside_deviation",
     "sortino_ratio",
     "max_drawdown",
     "calmar_ratio",
@@ -391,22 +392,45 @@ def sharpe_ratio(
     return float(excess.mean() / sd * np.sqrt(periods_per_year))
 
 
+def downside_deviation(
+    returns: np.ndarray,
+    periods_per_year: int = 252,
+    risk_free_rate: float = 0.0,
+) -> float:
+    """Downside deviation about the target return, ``sqrt(mean(min(r - MAR, 0)^2))``.
+
+    The mean is taken over **all** periods, not only the losing ones. Dividing by the
+    count of negative periods instead -- which is what ``std(r | r < 0)`` does, and what
+    an earlier revision of this module did -- measures dispersion of the losses about
+    their own mean rather than their magnitude about the target. It is systematically
+    smaller, so it inflates Sortino, and by a factor that grows as losing periods become
+    rarer. A strategy that loses on 20% of days has its Sortino overstated by roughly
+    sqrt(5) under the wrong definition.
+    """
+    r = np.asarray(returns, dtype=float)
+    r = r[np.isfinite(r)]
+    if r.size == 0:
+        return np.nan
+    excess = r - risk_free_rate / periods_per_year
+    return float(np.sqrt(np.mean(np.minimum(excess, 0.0) ** 2)))
+
+
 def sortino_ratio(
     returns: np.ndarray,
     periods_per_year: int = 252,
     risk_free_rate: float = 0.0,
 ) -> float:
+    """Annualised Sortino ratio, using the target-relative downside deviation."""
     r = np.asarray(returns, dtype=float)
     r = r[np.isfinite(r)]
     if r.size < 2:
         return np.nan
     excess = r - risk_free_rate / periods_per_year
-    downside = excess[excess < 0]
-    if downside.size == 0:
-        return np.inf
-    dd = np.sqrt(np.mean(downside**2))
-    if dd < _EPS:
+    dd = downside_deviation(r, periods_per_year, risk_free_rate)
+    if not np.isfinite(dd):
         return np.nan
+    if dd < _EPS:
+        return np.inf if excess.mean() > 0 else np.nan
     return float(excess.mean() / dd * np.sqrt(periods_per_year))
 
 
