@@ -140,3 +140,67 @@ def test_minimum_track_record_length_is_finite_and_sensible():
     assert np.isfinite(n) and n > 0
     # A ~0.8 annualised Sharpe needs a few years before it is distinguishable from zero.
     assert n > 250, f"minimum track record of {n:.0f} days looks implausibly short"
+
+
+# --------------------------------------------------------------------------------------
+# Probability of Backtest Overfitting
+# --------------------------------------------------------------------------------------
+def test_pbo_is_near_one_half_when_every_strategy_is_noise():
+    """If all candidates are noise, picking the in-sample winner is a coin flip.
+
+    This is the diagnostic both referee reports asked for: it measures whether the
+    *selection procedure* generalises, not whether the winner looks good.
+    """
+    rng = np.random.default_rng(0)
+    M = rng.standard_normal((2000, 20)) * 0.01
+
+    result = D.probability_of_backtest_overfitting(M, n_blocks=10)
+    assert 0.30 < result.pbo < 0.70, f"PBO={result.pbo:.3f} on pure noise"
+    assert result.n_combinations == 252
+    assert "overfitting" in result.verdict() or "risk" in result.verdict()
+
+
+def test_pbo_is_low_when_one_strategy_is_genuinely_better():
+    """A real and persistent edge must be selectable, or the statistic is useless."""
+    rng = np.random.default_rng(1)
+    M = rng.standard_normal((2000, 20)) * 0.01
+    M[:, 7] += 0.0015  # one genuinely superior strategy, present in every block
+
+    result = D.probability_of_backtest_overfitting(M, n_blocks=10)
+    assert result.pbo < 0.10, f"PBO={result.pbo:.3f} despite a persistent edge"
+    assert result.verdict().startswith("selection procedure appears sound")
+
+    # oos_degradation is the in-sample winner's out-of-sample score minus the best
+    # out-of-sample score, so it is non-positive by construction. When the edge is real
+    # the selected strategy is also the out-of-sample winner almost every time, leaving
+    # a degradation of essentially zero in Sharpe units.
+    assert -0.05 < result.oos_degradation <= 1e-9, (
+        f"degradation {result.oos_degradation:.4f} is too large for a persistent edge"
+    )
+
+
+def test_pbo_detects_a_selection_procedure_that_chases_the_first_half():
+    """Strategies that only work early must not be trusted by the selector.
+
+    Constructed so that the in-sample winner in any early-weighted split is precisely
+    the strategy that dies later. PBO should be materially above the noise floor.
+    """
+    rng = np.random.default_rng(2)
+    n = 2000
+    M = rng.standard_normal((n, 15)) * 0.01
+    half = n // 2
+    M[:half, 3] += 0.004
+    M[half:, 3] -= 0.004
+
+    result = D.probability_of_backtest_overfitting(M, n_blocks=10)
+    assert result.pbo > 0.25, f"PBO={result.pbo:.3f} for a strategy that decays"
+
+
+def test_pbo_rejects_malformed_input():
+    rng = np.random.default_rng(3)
+    with pytest.raises(ValueError, match="even"):
+        D.probability_of_backtest_overfitting(rng.standard_normal((500, 5)), n_blocks=7)
+    with pytest.raises(ValueError, match="at least two"):
+        D.probability_of_backtest_overfitting(rng.standard_normal((500, 1)))
+    with pytest.raises(ValueError, match="too few"):
+        D.probability_of_backtest_overfitting(rng.standard_normal((20, 5)), n_blocks=10)
