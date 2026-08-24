@@ -75,11 +75,11 @@ def write_table(tid: str, df: pd.DataFrame, caption: str, prov: Provenance,
     TABLES.mkdir(parents=True, exist_ok=True)
     TABLES.joinpath(f"{tid}.csv").write_text(df.to_csv(index=False), encoding="utf-8")
 
-    # escape=False, because several column headings are deliberately LaTeX: "$lpha$"
-    # and "Macro $F_1$" render as literal source under pandas' escaping, which is how
-    # a column called alpha ended up printed as \$	extbackslash alpha\$. Nothing here
-    # comes from user input -- every heading and cell is written in this file -- but a
-    # stray underscore would still break the build silently, so check rather than trust.
+    # escape=False, because several column headings are deliberately LaTeX. Under
+    # pandas' escaping they render as literal source, which is how the gate-sweep
+    # table came to print its alpha column as escaped backslash-alpha. Nothing here
+    # comes from user input -- every heading and cell is written in this file -- but
+    # a stray underscore would still break the build, so check rather than trust.
     unsafe = _latex_unsafe_cells(df)
     if unsafe:
         raise ValueError(
@@ -252,7 +252,22 @@ def main() -> int:
         from finsent.models.finsentnet_c import FinSentNetC
         counts = FinSentNetC.from_config(cfg).parameter_counts()
         total = counts.pop("TOTAL")
-        t2 = pd.DataFrame([{"Module": k, "Parameters": v,
+        pretty_module = {
+            "price.multi_scale_conv": "price: multi-scale convolution",
+            "price.mixer": "price: pointwise mixer",
+            "price.tcn": "price: dilated TCN (4 blocks)",
+            "price.gru": "price: GRU ($64\\to128$)",
+            "price.norms": "price: normalisations",
+            "text.projection": "text: projection $768\\to128$",
+            "text.attention_pooling": "text: attention pooling + MLP",
+            "text.embeddings": "text: source embeddings",
+            "text.null_embedding": "text: null embedding",
+            "fusion.attention": "fusion: multi-head attention",
+            "fusion.gate": "fusion: gate + normalisation",
+            "heads": "heads: trunk + three outputs",
+        }
+        t2 = pd.DataFrame([{"Module": pretty_module.get(k, k.replace("_", " ")),
+                            "Parameters": v,
                             "Percent": 100.0 * v / total} for k, v in counts.items()])
         # The text pathway is carried but never trained in the price-only state, and
         # a capacity argument that ignores that is overstating the model.
@@ -653,6 +668,30 @@ def main() -> int:
                 key[name] = f"{float(hit['Empirical'].iloc[0]):.4f}"
                 key[name + "Set"] = f"{float(hit['Mean set size'].iloc[0]):.2f}"
                 key[name + "Single"] = f"{float(hit['Singleton rate'].iloc[0]):.3f}"
+
+        # Split against adaptive on the real panel. Section 6.2 claims the online update
+        # is what holds coverage when exchangeability fails; if the split variant drifts
+        # here, that claim has market evidence rather than only a planted fixture, and
+        # the prose should be able to quote it without anyone typing a number.
+        try:
+            adapt = (prim_cov[prim_cov["variant"] == "adaptive"]
+                     .groupby("alpha")[cols].mean().reset_index())
+            merged = cov_t.merge(adapt[["alpha", "empirical_coverage"]], on="alpha")
+            merged["split_gap"] = merged["Empirical"] - merged["Nominal"]
+            merged["adaptive_gap"] = merged["empirical_coverage"] - merged["Nominal"]
+            worst = merged.iloc[merged["split_gap"].abs().idxmax()]
+            key["kwCovWorstAlpha"] = f"{float(worst['alpha']):.2f}"
+            key["kwCovWorstSplitGap"] = f"{float(worst['split_gap']):+.4f}"
+            key["kwCovWorstAdaptiveGap"] = f"{float(worst['adaptive_gap']):+.4f}"
+            key["kwCovMeanAbsSplitGap"] = f"{merged['split_gap'].abs().mean():.4f}"
+            key["kwCovMeanAbsAdaptiveGap"] = f"{merged['adaptive_gap'].abs().mean():.4f}"
+            hit10 = merged[np.isclose(merged["alpha"], 0.10)]
+            if len(hit10):
+                key["kwCovATenAdaptive"] = (
+                    f"{float(hit10['empirical_coverage'].iloc[0]):.4f}")
+        except Exception as exc:                     # a run without adaptive rows
+            print(f"  split/adaptive comparison skipped: {exc}")
+
     gt = pd.DataFrame(gate_rows)
     if len(gt) > 1:
         ungated_row = gt[gt[ALPHA_COL].isna()]
