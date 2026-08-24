@@ -50,6 +50,7 @@
 \providecommand{\kwYearStart}{\textbf{??}}
 \providecommand{\kwYearEnd}{\textbf{??}}
 \providecommand{\kwESSFactor}{\textbf{??}}
+\providecommand{\kwTests}{\textbf{??}}
 \providecommand{\kwPrimaryIC}{\textbf{??}}
 \providecommand{\kwPrimaryICt}{\textbf{??}}
 \providecommand{\kwCovAFive}{\textbf{??}}
@@ -260,7 +261,11 @@ splitter.
   simulated compounding (Section~\ref{sec:decision}).
 \item \textbf{A compact gated cross-modal architecture} with modality dropout,
   at \num{448{,}453} trainable parameters against roughly \num{220{,}000}
-  effectively independent training samples (Section~\ref{sec:model}).
+  effectively independent training samples (Section~\ref{sec:model}). We are
+  explicit that this contribution is a \emph{specification}: the corpus
+  available to us cannot support a point-in-time text claim, so every number we
+  report comes from the model run in a forced price-only state, and the fusion
+  pathway is offered for replication rather than demonstrated.
 \item \textbf{Calibration-aware training and conformal abstention}: a
   differentiable calibration objective, guarded per-fold post-hoc calibration in
   which the identity map competes as a genuine candidate, and adaptive conformal
@@ -268,12 +273,26 @@ splitter.
   (Sections~\ref{sec:objective}--\ref{sec:calibration}).
 \item \textbf{A leakage-controlled evaluation protocol}, pre-specified in
   Section~\ref{sec:protocol}, with the measured demonstration in
-  Section~\ref{sec:validation} that two of its components are load-bearing
-  rather than ceremonial.
+  Section~\ref{sec:validation} that its components are load-bearing rather than
+  ceremonial.
+\item \textbf{A null result, reported as one.} On \kwTickerDays{} ticker-days
+  no model we test produces a positive rank information coefficient that
+  survives a Newey--West standard error, and none clears realistic costs. We
+  report this rather than searching for the configuration that would not have
+  produced it. Along the way the protocol caught three defects in our own
+  pipeline, each of which would have produced a plausible-looking result: an
+  execution-lag leak worth an apparent rank IC of \num{0.108} on driftless
+  data, an unguarded post-hoc calibration step that improved validation
+  calibration while degrading held-out calibration by an order of magnitude,
+  and a position-sizing rule that saturated every weight at its cap because it
+  sized the level of the conditional mean rather than its cross-sectional
+  deviation.
 \item \textbf{A released, tested implementation.} The data, evaluation,
   calibration, conformal and decision layers depend only on
   NumPy/pandas/SciPy, so the paper's statistical claims reproduce without a
-  deep-learning installation; 207 tests accompany the code.
+  deep-learning installation; \kwTests{} test functions accompany the code, and
+  every table and every number quoted in the text is emitted by the release
+  rather than transcribed into it.
 \end{enumerate}
 
 \paragraph{Relation to prior work by the authors.}
