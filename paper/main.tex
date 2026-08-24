@@ -1398,6 +1398,35 @@ guarantee is distribution-free and holds without any assumption that the model
 is correct --- which, at this signal level, is a considerably more useful thing
 to be able to promise than accuracy.
 
+\subsection{The online variant is what survives a regime break}
+\label{sec:adaptivecoverage}
+
+Split conformal buys its guarantee with an assumption, and the assumption is
+exchangeability between the calibration block and the test block. Financial data
+breaks it on a schedule. It is worth measuring what the break actually costs,
+because the guarantee does not degrade gracefully when its premise fails.
+
+We construct the failure directly. A calibration block is drawn in which the model
+carries genuine information, and a test block in which the same model is wrong:
+probability mass sits on a class other than the realised one, which is what a
+regime change looks like to a predictor fitted before it. Under exchangeability
+both variants land on nominal, within \num{0.02} at every $\alpha$ we tried. Under
+the break they part company. At a nominal \num{0.90}, split coverage falls to
+\num{0.467}. The Gibbs--Candès update holds \num{0.897}, and it does so without
+being told that anything happened: it reads its own realised coverage and tightens
+$\alpha_t$ until the shortfall closes.
+
+Two points follow. The first is that a distribution-free guarantee is only as
+distribution-free as its exchangeability assumption, and a paper that reports
+split coverage on financial data without testing that assumption is reporting a
+number whose premise it has not checked. The second is about ordering. An online
+predictor consumes each outcome only after emitting that row's set, and if the
+label reached the set first, coverage would be perfect and meaningless. Our test
+suite asserts that the emitted set is unchanged across all three possible labels,
+which is the only form of that check that cannot pass by accident.
+
+%==============================================================================
+
 \subsection{The contract holds on the real panel, not only on fixtures}
 \label{sec:validation:real}
 
