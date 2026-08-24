@@ -28,7 +28,7 @@ pytestmark = pytest.mark.skipif(not PAPER.exists(), reason="manuscript not prese
 def appendix() -> str:
     text = PAPER.read_text(encoding="utf-8")
     start = text.index("All constants live in a single configuration")
-    end = text.index("Every generated table", start)
+    end = text.index("Provenance is recorded once", start)
     return " ".join(text[start:end].split())
 
 
@@ -206,4 +206,40 @@ def test_the_gru_is_unidirectional_as_the_paper_insists():
     )
     assert load_config().model.gru_bidirectional is False, (
         "the configuration builds a bidirectional GRU while the paper claims otherwise"
+    )
+
+
+def test_generated_macros_override_the_fallbacks_rather_than_colliding():
+    """A second definition of an existing LaTeX macro is an error, not an override.
+
+    main.tex declares a visible fallback for every generated macro so a missing
+    keynumbers.tex is obvious. If keynumbers.tex then uses a bare newcommand, LaTeX
+    reports 'already defined' and keeps the fallback -- so every quoted number in the
+    compiled paper renders as the placeholder while the tables beside it are correct.
+    That shipped once. It should not ship twice.
+    """
+    keynums = Path("paper/tables/keynumbers.tex")
+    if not keynums.exists():
+        pytest.skip("keynumbers.tex not generated yet")
+
+    generated = keynums.read_text(encoding="utf-8")
+    paper = PAPER.read_text(encoding="utf-8")
+
+    fallbacks = set(re.findall(r"\\providecommand\{\\(kw[A-Za-z]+)\}", paper))
+    bare = set(re.findall(r"(?<!\w)\\newcommand\*?\{\\(kw[A-Za-z]+)\}", generated))
+
+    clash = sorted(fallbacks & bare)
+    assert not clash, (
+        f"{len(clash)} macro(s) are declared in main.tex and redefined with "
+        f"\newcommand in keynumbers.tex, which LaTeX rejects: {clash[:6]}. "
+        "Emit providecommand followed by renewcommand instead."
+    )
+
+    # And every fallback must actually be overridden by something.
+    overridden = set(re.findall(r"\\renewcommand\*?\{\\(kw[A-Za-z]+)\}", generated))
+    used = set(re.findall(r"\\(kw[A-Za-z]+)", paper.split(r"\begin{document}")[1]))
+    never_set = sorted(used - overridden)
+    assert not never_set, (
+        f"used in the body but never given a value: {never_set[:6]}; these render as "
+        "the placeholder"
     )
