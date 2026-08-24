@@ -19,52 +19,52 @@
     <span class="ts-pill rust-pill">Rust</span> Layer 2–4 — data ingestion · order book · risk engine
   </div>
   <div class="ts-grid">
-    <div class="ts-card" onclick="sendPrompt('Show me a complete tokio async runtime setup for HFT WebSocket ingestion')">
+    <div class="ts-card">
       <div class="ts-lib">tokio</div>
       <div class="ts-desc">Async runtime — spawns thousands of concurrent WebSocket tasks on a thread pool. Multi-threaded scheduler maps tasks to OS threads.</div>
       <div class="ts-ver">tokio = "1" features = ["full"]</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('Show me tokio-tungstenite WebSocket reconnection code for exchange feeds')">
+    <div class="ts-card">
       <div class="ts-lib">tokio-tungstenite</div>
       <div class="ts-desc">Async WebSocket client. Streams tick data from Binance, NSE, NYSE feeds. Auto-reconnects on drop — critical for HFT uptime.</div>
       <div class="ts-ver">tokio-tungstenite = "0.21"</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('Explain serde zero-copy deserialization for tick data parsing in Rust')">
+    <div class="ts-card">
       <div class="ts-lib">serde + serde_json</div>
       <div class="ts-desc">Zero-copy JSON deserialization. Tick structs are deserialized directly without intermediate allocation — nanosecond parsing.</div>
       <div class="ts-ver">serde = "1" features = ["derive"]</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('Explain crossbeam lock-free channels for the HFT ring buffer')">
+    <div class="ts-card">
       <div class="ts-lib">crossbeam</div>
       <div class="ts-desc">Lock-free MPMC channels. Ingestion threads push ticks; feature engine threads pop. No mutex contention on the critical data path.</div>
       <div class="ts-ver">crossbeam = "0.8"</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('How does DashMap provide thread-safe symbol storage in Rust HFT?')">
+    <div class="ts-card">
       <div class="ts-lib">dashmap</div>
       <div class="ts-desc">Concurrent HashMap sharded across threads. Stores per-symbol order books, feature vectors, and live state — lock-free concurrent reads.</div>
       <div class="ts-ver">dashmap = "5"</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('Show me full Rust ta crate RSI MACD Bollinger implementation for HFT features')">
+    <div class="ts-card">
       <div class="ts-lib">ta (technical analysis)</div>
       <div class="ts-desc">On-tick technical indicators: RSI-14, MACD-12-26-9, Bollinger Bands-20-2, EMA, ATR. All computed in Rust — zero Python overhead.</div>
       <div class="ts-ver">ta = "0.5"</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('Explain BTreeMap + RwLock order book design for L2 data in Rust')">
+    <div class="ts-card">
       <div class="ts-lib">std::collections::BTreeMap</div>
       <div class="ts-desc">Sorted order book. Bids descending, asks ascending. O(log n) insert/remove. Wrapped in RwLock for concurrent multi-thread reads.</div>
       <div class="ts-ver">std library — zero dependency</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('What Rust crates handle statistical VaR and drawdown calculation?')">
+    <div class="ts-card">
       <div class="ts-lib">statrs + ndarray</div>
       <div class="ts-desc">Statistical distributions for VaR Monte Carlo simulation. ndarray for matrix operations in the risk engine without Python overhead.</div>
       <div class="ts-ver">statrs = "0.16" · ndarray = "0.15"</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('How does once_cell enable lazy global state for the Rust HFT engine?')">
+    <div class="ts-card">
       <div class="ts-lib">once_cell</div>
       <div class="ts-desc">Lazy global singletons — FEATURE_STORE, ORDER_BOOKS. Initialized once on first access, shared across all threads without a mutex.</div>
       <div class="ts-ver">once_cell = "1"</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('Show me reqwest async HTTP client for REST API data fetching in Rust')">
+    <div class="ts-card">
       <div class="ts-lib">reqwest</div>
       <div class="ts-desc">Async HTTP client for REST-based market data (Alpha Vantage, FRED). Runs in Tokio, doesn't block the tick-processing threads.</div>
       <div class="ts-ver">reqwest = "0.11" features = ["json"]</div>
@@ -77,12 +77,12 @@
     <span class="ts-pill br-pill">Bridge</span> PyO3 + maturin — Rust ↔ Python zero-overhead membrane
   </div>
   <div class="ts-grid">
-    <div class="ts-card" onclick="sendPrompt('Explain PyO3 pyfunction and pymodule macros for HFT Rust-Python bridge')">
+    <div class="ts-card">
       <div class="ts-lib">PyO3</div>
       <div class="ts-desc">#[pyfunction] and #[pymodule] macros compile Rust functions into a Python-callable shared library. Direct memory sharing, no serialization cost.</div>
       <div class="ts-ver">pyo3 = "0.21" features = ["extension-module"]</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('How does maturin build and publish Rust PyO3 extensions as Python wheels?')">
+    <div class="ts-card">
       <div class="ts-lib">maturin</div>
       <div class="ts-desc">Build tool. `maturin develop --release` compiles Rust with full LTO optimization and installs directly into the active virtualenv in one command.</div>
       <div class="ts-ver">pip install maturin</div>
@@ -95,42 +95,42 @@
     <span class="ts-pill py-pill">Python</span> Layer 5 — 5 neural networks (ML/DL frameworks)
   </div>
   <div class="ts-grid">
-    <div class="ts-card" onclick="sendPrompt('Show full PyTorch LSTM Transformer architecture code for price prediction NN1')">
+    <div class="ts-card">
       <div class="ts-lib">PyTorch 2.x</div>
       <div class="ts-desc">Core deep learning framework for NN1, NN3, NN4. CUDA-accelerated. autograd handles backprop. torch.compile() (PyTorch 2.0) adds 30-50% training speedup via kernel fusion.</div>
       <div class="ts-ver">torch == "2.2.0" torchvision torchaudio</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('How to fine-tune ProsusAI/finbert on custom financial news for NN2?')">
+    <div class="ts-card">
       <div class="ts-lib">HuggingFace Transformers</div>
       <div class="ts-desc">FinBERT (ProsusAI/finbert) for NN2 sentiment. Pre-trained on 1.8M financial texts. Fine-tuned on your market-specific news corpus via Trainer API.</div>
       <div class="ts-ver">transformers == "4.38.0" datasets tokenizers</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('Show PPO actor-critic network architecture code using stable-baselines3 for NN5')">
+    <div class="ts-card">
       <div class="ts-lib">stable-baselines3</div>
       <div class="ts-desc">NN5 PPO portfolio agent. Production-grade RL implementations. Custom MultiInputPolicy takes concatenated NN1-4 outputs + user preferences as state.</div>
       <div class="ts-ver">stable-baselines3 == "2.2.1"</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('How does hmmlearn GaussianHMM work for market regime detection in NN3?')">
+    <div class="ts-card">
       <div class="ts-lib">hmmlearn</div>
       <div class="ts-desc">NN3 regime detection. GaussianHMM with 4 hidden states (bull/bear/sideways/crisis). CNN extracts features; HMM decodes the market regime sequence.</div>
       <div class="ts-ver">hmmlearn == "0.3.2"</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('How does PyTorch Lightning simplify multi-GPU training of all 5 NNs?')">
+    <div class="ts-card">
       <div class="ts-lib">PyTorch Lightning</div>
       <div class="ts-desc">Training orchestration for all 5 NNs. Handles multi-GPU training, gradient clipping, checkpointing, early stopping, and W&B logging automatically.</div>
       <div class="ts-ver">lightning == "2.2.0"</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('Explain Monte Carlo Dropout implementation in PyTorch for NN4 uncertainty')">
+    <div class="ts-card">
       <div class="ts-lib">PyTorch (MC Dropout)</div>
       <div class="ts-desc">NN4 uncertainty quantification. Dropout layers kept active at inference time. 100 forward passes → variance = model uncertainty. Higher uncertainty → smaller positions.</div>
       <div class="ts-ver">Built into torch.nn.Dropout</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('How does optuna hyperparameter optimization work for all 5 neural networks?')">
+    <div class="ts-card">
       <div class="ts-lib">Optuna</div>
       <div class="ts-desc">Bayesian hyperparameter optimization for all 5 NNs. Tree-structured Parzen Estimator (TPE) efficiently searches learning rate, hidden dim, layers, dropout rate.</div>
       <div class="ts-ver">optuna == "3.5.0"</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('How is wandb used for experiment tracking across 5 neural networks?')">
+    <div class="ts-card">
       <div class="ts-lib">Weights & Biases (wandb)</div>
       <div class="ts-desc">Experiment tracking: logs every training run, hyperparameter set, loss curve, and validation metric. Enables comparison across model versions and ablation studies.</div>
       <div class="ts-ver">wandb == "0.16.0"</div>
@@ -143,32 +143,32 @@
     <span class="ts-pill py-pill">Python</span> Layer 6–7 — data fetching · orchestration · API · storage
   </div>
   <div class="ts-grid">
-    <div class="ts-card" onclick="sendPrompt('Show async aiohttp news fetching code from NewsAPI and Reddit for sentiment')">
+    <div class="ts-card">
       <div class="ts-lib">aiohttp</div>
       <div class="ts-desc">Async HTTP for news/social data ingestion. Fetches NewsAPI, Reddit PRAW, SEC EDGAR concurrently without blocking the NN inference loop.</div>
       <div class="ts-ver">aiohttp == "3.9.3"</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('Show FastAPI endpoint design for the investor-facing quant API')">
+    <div class="ts-card">
       <div class="ts-lib">FastAPI</div>
       <div class="ts-desc">Investor REST API. Endpoints: POST /analyze (user preferences → decisions), GET /portfolio, GET /signals. Async, OpenAPI auto-generated, JWT auth.</div>
       <div class="ts-ver">fastapi == "0.109.0" uvicorn</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('How is TimescaleDB used to store and query time-series tick data?')">
+    <div class="ts-card">
       <div class="ts-lib">TimescaleDB</div>
       <div class="ts-desc">PostgreSQL extension optimized for time-series. Stores historical tick data with hypertable chunking. SQL queries on billions of rows stay fast via compression.</div>
       <div class="ts-ver">timescaledb + psycopg2-binary</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('What is Redis used for in the HFT quant system?')">
+    <div class="ts-card">
       <div class="ts-lib">Redis</div>
       <div class="ts-desc">In-memory caching layer. Caches latest NN outputs, sentiment scores, and risk profiles per symbol. Avoids re-inference on every API call. Pub/Sub for live signals.</div>
       <div class="ts-ver">redis-py == "5.0.1"</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('How does Kafka fit into the HFT quant system data pipeline?')">
+    <div class="ts-card">
       <div class="ts-lib">Apache Kafka</div>
       <div class="ts-desc">Event streaming backbone. Raw ticks → Kafka topics → feature consumers. Enables replay for backtesting, audit trail, and decoupling ingestion from inference.</div>
       <div class="ts-ver">confluent-kafka-python == "2.3.0"</div>
     </div>
-    <div class="ts-card" onclick="sendPrompt('How is Polars used for fast backtesting data processing in this system?')">
+    <div class="ts-card">
       <div class="ts-lib">Polars</div>
       <div class="ts-desc">Rust-backed DataFrame library for backtesting and training data preparation. 10–50× faster than pandas on large tick datasets. Lazy evaluation, query optimization.</div>
       <div class="ts-ver">polars == "0.20.0"</div>
