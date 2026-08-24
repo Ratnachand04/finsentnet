@@ -1550,6 +1550,21 @@ rate that the abstention gate keys on, across the full $\alpha$ grid.}
 accurate. The singleton rate is what decides whether the gate ever trades, and
 it is a property of the model's uncertainty rather than of the guarantee.}
 
+\begin{figure}[t]
+\centering
+\IfFileExists{figures/F5_main.pdf}
+  {\includegraphics[width=0.72\linewidth]{figures/F5_main.pdf}}
+  {\fbox{\parbox{0.72\linewidth}{\centering\vspace{16mm}
+   \small\texttt{[F5 not yet generated]}\\[3pt]
+   Reliability curve, raw against calibrated\vspace{16mm}}}}
+\caption{Reliability of the proposed model's probabilities, before and after the
+guarded post-hoc map. Points on the diagonal are calibrated. The curves are
+short because a model close to the base rate emits confidences over a narrow
+range, and that narrowness is itself the finding: a predictor which never
+states more than modest confidence has little to be miscalibrated about.}
+\label{fig:F5_main}
+\end{figure}
+
 \subsection{The sizing experiment}
 
 This is the paper's strongest instrument, because it holds the predictions
@@ -1622,6 +1637,21 @@ Overfitting.}
 {We do not claim a novel risk premium unless the alpha $t$-statistic clears the
 threshold of \citet{harvey2016and}; it does not, and we say so. A negative
 break-even cost means the strategy loses money before any cost is charged.}
+
+\begin{figure}[t]
+\centering
+\IfFileExists{figures/F7_main.pdf}
+  {\includegraphics[width=0.72\linewidth]{figures/F7_main.pdf}}
+  {\fbox{\parbox{0.72\linewidth}{\centering\vspace{16mm}
+   \small\texttt{[F7 not yet generated]}\\[3pt]
+   Net Sharpe against round-trip cost, break-even marked\vspace{16mm}}}}
+\caption{Net Sharpe against round-trip cost, with the break-even level marked.
+Section~\ref{sec:costs} promises this curve in place of a single cost
+assumption, because quoting one number invites the reader to guess which
+assumption was chosen and why. Where the curve meets zero to the left of the
+axis, the book was losing money before any cost was charged.}
+\label{fig:F7_main}
+\end{figure}
 
 \subsection{Ablation status}
 
