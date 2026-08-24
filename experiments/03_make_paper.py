@@ -11,6 +11,7 @@ in the manuscript is entered by hand.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -525,6 +526,12 @@ def main() -> int:
         "kwYearStart": f"{dts.dt.year.min()}",
         "kwYearEnd": f"{dts.dt.year.max()}",
         "kwESSFactor": f"{len(study)/ess:.1f}",
+        # Counted rather than remembered: the manuscript quoted a test count that
+        # had been stale for five commits.
+        "kwTests": sum(
+            len(re.findall(r"^def test_", f.read_text(encoding="utf-8"), re.M))
+            for f in sorted(Path("tests").glob("test_*.py"))
+        ),
     }
     if len(prim3):
         key["kwPrimaryIC"] = f"{float(prim3['Rank IC'].iloc[0]):+.4f}"
