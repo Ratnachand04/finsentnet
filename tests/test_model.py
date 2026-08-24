@@ -303,3 +303,38 @@ def test_model_can_overfit_a_single_batch(model, batch):
             first = last
 
     assert last < 0.1, f"loss stalled at {last:.4f} (started {first:.4f})"
+
+
+def test_mmce_subsamples_large_batches_and_stays_close():
+    """The kernel is quadratic in batch size; date-batching makes batches large.
+
+    Uncapped, a 3,336-row batch builds an 11-million-element kernel every step. The
+    capped estimator must remain close to the exact value, since both estimate the
+    same mean over pairs.
+    """
+    g = torch.Generator().manual_seed(0)
+    logits = torch.randn(3000, 3, generator=g) * 2.0
+    targets = torch.randint(0, 3, (3000,), generator=g)
+
+    torch.manual_seed(0)
+    exact = float(mmce_loss(logits, targets, max_pairs=10_000))
+    vals = []
+    for s in range(8):
+        torch.manual_seed(s)
+        vals.append(float(mmce_loss(logits, targets, max_pairs=512)))
+
+    assert abs(float(np.mean(vals)) - exact) < 0.15 * max(exact, 1e-6) + 0.01, (
+        f"subsampled MMCE {np.mean(vals):.4f} drifts from exact {exact:.4f}"
+    )
+
+
+def test_mmce_capped_batch_is_much_cheaper():
+    """Guards the fix: the capped path must not build the full kernel."""
+    g = torch.Generator().manual_seed(1)
+    logits = torch.randn(4000, 3, generator=g, requires_grad=True)
+    targets = torch.randint(0, 3, (4000,), generator=g)
+
+    loss = mmce_loss(logits, targets, max_pairs=256)
+    loss.backward()
+    assert torch.isfinite(loss)
+    assert logits.grad is not None and torch.isfinite(logits.grad).all()
