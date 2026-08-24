@@ -146,9 +146,19 @@ def strategy_returns(panel: pd.DataFrame, rule: TradingRule, cost_bps: float,
 
 # --------------------------------------------------------------------------------------
 def main() -> int:
+    global STUDY, TABLES, FIGURES
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--study-panel", default="data/cache/study_panel.parquet")
+    ap.add_argument("--study-dir", default="runs/study",
+                    help="directory of prediction panels; useful for reporting on an "
+                         "alternative run without disturbing the primary one")
+    ap.add_argument("--out-dir", default="paper",
+                    help="where tables/ and figures/ are written")
     args = ap.parse_args()
+
+    STUDY = Path(args.study_dir)
+    TABLES = Path(args.out_dir) / "tables"
+    FIGURES = Path(args.out_dir) / "figures"
 
     cfg = load_config()
     study = pd.read_parquet(args.study_panel)
