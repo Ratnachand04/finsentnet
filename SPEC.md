@@ -297,9 +297,36 @@ alpha[t+1] = alpha[t] + gamma * (alpha_target - 1{y_t not in C_t}),   gamma = 0.
 
 ```
 f* = mu / sigma^2                 G(f*) = mu^2 / (2 sigma^2) = SR^2 / 2
-f_used = clip(kappa * mu_hat / sigma2_hat, -f_max, f_max)
+f_used = clip(kappa * mu_edge / sigma2_hat, -f_max, f_max)
 kappa = 0.25,  f_max = 0.10
 ```
+
+**Frozen: for a dollar-neutral book, `mu_edge` is the cross-sectionally demeaned
+`mu_hat`, and the demeaning happens *before* the Kelly map, not after it.**
+
+```
+mu_edge[i,t] = mu_hat[i,t] - mean_j( mu_hat[j,t] )      # dollar_neutral only
+```
+
+A dollar-neutral book cannot express a view on the market level, so the common
+component of `mu_hat` is not tradeable by it and must be removed before sizing.
+Sizing the raw level and demeaning the resulting weights is *not* the same
+operation, because the clip sits between them and the clip is not linear.
+
+This is not a hypothetical. On the study panel the label distribution drifts up
+(UP 34.3% against DOWN 27.1%), so every `mu_hat` a classifier produced was
+positive — the 1st percentile was `+1.8e-3` — every Kelly fraction saturated at
+`+f_max`, and demeaning the saturated weights drove the book to exactly zero on
+**100%** of dates. Turnover 0.0, Sharpe `nan`, and three of the four rows of the
+paper's headline sizing table were vacuous while looking merely unimpressive.
+
+Enforced by `tests/test_backtest_and_report.py::test_kelly_sizes_the_demeaned_edge_not_the_level`,
+which plants a large shared drift on top of a small genuine cross-sectional
+spread and asserts both that the book survives and that its weights track the
+relative edge rather than the level.
+
+Directional (non-neutral) books size `mu_hat` itself, since for them the market
+component *is* tradeable.
 
 ### 5.4 The three propositions (paper §6, implemented in `finsent/decision/growth_theory.py`)
 
