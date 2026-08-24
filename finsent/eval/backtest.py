@@ -169,7 +169,18 @@ def _weights_for_date(
     if rule.scheme == "kelly":
         cfg = sizing or SizingConfig(kappa=rule.kappa, f_max=rule.f_max)
         sigma2 = grp["sigma2"].to_numpy(dtype=float)
-        raw = kelly_continuous(scores, sigma2, cfg.kappa, cfg.f_max)
+        mu = scores
+        if rule.dollar_neutral and mu.size > 1:
+            # A dollar-neutral book cannot express a view on the market level, so the
+            # common component of mu must be removed BEFORE sizing, not after. Sizing
+            # the raw level and demeaning the resulting weights is not equivalent and
+            # fails badly: on this panel the label distribution drifts up (UP 34.3%
+            # against DOWN 27.1%), so every mu_hat was positive, every Kelly fraction
+            # saturated at +f_max, and demeaning the saturated weights collapsed the
+            # entire book to zero on 100% of dates. Demeaning the edge first keeps the
+            # cross-sectional information that the book is actually able to trade.
+            mu = mu - mu.mean()
+        raw = kelly_continuous(mu, sigma2, cfg.kappa, cfg.f_max)
     else:
         n = scores.size
         k = max(int(np.floor(n * rule.quantile)), 1)
