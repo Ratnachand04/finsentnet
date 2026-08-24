@@ -163,10 +163,17 @@ def make_gbm(columns=FEATURE_NAMES, max_iter: int = 200):
 # --------------------------------------------------------------------------------------
 # FinSentNet-C, price-only configuration
 # --------------------------------------------------------------------------------------
-def make_finsentnet(cfg, frame: pd.DataFrame, epochs: int = 12, lr: float = 3e-4,
-                    dates_per_batch: int = 24, device: str | None = None,
-                    max_rows: int = 1536):
+def make_finsentnet(cfg, frame: pd.DataFrame, epochs: int | None = None,
+                    lr: float | None = None, dates_per_batch: int | None = None,
+                    device: str | None = None, max_rows: int = 2048):
     """Train the cross-modal architecture in its forced price-only state.
+
+    Every optimisation setting comes from the configuration rather than from a literal
+    here, because the paper quotes those settings and a hard-coded value that disagrees
+    with the configuration is a silent deviation. This function previously ran a
+    different objective and a different schedule from the one Section 5 describes: the
+    cross-sectional ranking term was disabled, there was no learning-rate schedule, no
+    weight averaging, and no early stopping at all.
 
     The dataset is built **once over the whole panel** and blocks are selected by
     date. Building it per block would be wrong: a window needs ``lookback``
@@ -175,14 +182,24 @@ def make_finsentnet(cfg, frame: pd.DataFrame, epochs: int = 12, lr: float = 3e-4
     Selecting by date instead keeps every block whole while the windows still
     only ever reach backwards, so no future information enters.
     """
+    import math
+
     import torch
 
     from finsent.data.panel import PanelDataset
     from finsent.models.finsentnet_c import FinSentNetC
     from finsent.training.objectives import CompositeObjective, LossWeights
 
+    epochs = int(epochs if epochs is not None else cfg.train.epochs)
+    lr = float(lr if lr is not None else cfg.train.lr)
+    dates_per_batch = int(dates_per_batch if dates_per_batch is not None
+                          else cfg.train.dates_per_batch)
+
     dev = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
-    amp = dev.type == "cuda" and torch.cuda.is_bf16_supported()
+    # The configuration asks for bf16; honour it only where the device really supports
+    # it, since bf16 emulated in software is slower than fp32 and silently so.
+    amp = (cfg.train.precision == "bf16" and dev.type == "cuda"
+           and torch.cuda.is_bf16_supported())
 
     dataset = PanelDataset(
         frame[["date", "ticker", *FEATURE_NAMES]],
@@ -191,7 +208,11 @@ def make_finsentnet(cfg, frame: pd.DataFrame, epochs: int = 12, lr: float = 3e-4
         max_headlines=cfg.data.K,
         embedding_dim=cfg.data.embedding_dim,
     )
-    print(f"    dataset: {dataset.describe()}  device={dev}")
+    print(f"    dataset: {dataset.describe()}  device={dev}  bf16={amp}")
+    print(f"    optimiser: {epochs} epochs max, patience {cfg.train.patience}, "
+          f"{dates_per_batch} dates/batch, <= {max_rows} rows/step, "
+          f"lr {lr:g}, warmup {cfg.train.warmup_pct:.0%}, EMA {cfg.train.ema_decay}, "
+          f"lambda_rank {cfg.loss.lambda_rank}")
 
     def fit_predict(train, val, test, seed, fold):
         torch.manual_seed(seed)
@@ -203,37 +224,127 @@ def make_finsentnet(cfg, frame: pd.DataFrame, epochs: int = 12, lr: float = 3e-4
         objective = CompositeObjective(LossWeights(
             lambda_reg=cfg.loss.lambda_reg,
             lambda_cal=cfg.loss.lambda_cal,
-            lambda_rank=0.0,     # O(n^2) per date; prohibitive at 139 names x 13 folds
+            # The ranking term is O(n^2) within a date, which at ~200 names is about
+            # 40k pairwise comparisons: measured at 1 ms per step and no extra memory.
+            # It was previously disabled on a mistaken cost argument, which ran an
+            # objective the paper does not describe.
+            lambda_rank=cfg.loss.lambda_rank,
             sigma_warmup_epochs=cfg.loss.sigma_warmup_epochs,
         )).to(dev)
         objective.set_class_weights_from(
             torch.as_tensor(train["y_dir"].to_numpy(dtype=np.int64)))
 
         opt = torch.optim.AdamW(model.parameters(), lr=lr,
+                                betas=cfg.train.betas,
                                 weight_decay=cfg.train.weight_decay)
 
         train_dates = pd.DatetimeIndex(sorted(pd.to_datetime(train["date"]).unique()))
-        model.train()
+        val_dates = pd.DatetimeIndex(sorted(pd.to_datetime(val["date"]).unique()))
+
+        # Cosine schedule with a short warmup, stepped once per date-batch so the step
+        # budget is exact regardless of how the row cap happens to split a batch.
+        per_epoch = max(1, math.ceil(len(train_dates) / dates_per_batch))
+        total_steps = max(1, per_epoch * epochs)
+        warmup = max(1, int(cfg.train.warmup_pct * total_steps))
+
+        def lr_at(step):
+            if step < warmup:
+                return (step + 1) / warmup
+            prog = (step - warmup) / max(total_steps - warmup, 1)
+            return 0.5 * (1.0 + math.cos(math.pi * min(prog, 1.0)))
+
+        sched = torch.optim.lr_scheduler.LambdaLR(opt, lr_at)
+
+        # Exponential moving average of the weights. Evaluated and predicted from, not
+        # merely tracked: at this signal level the averaged iterate is materially more
+        # stable than the last one, and reporting the last one would be a different
+        # model from the one the paper specifies.
+        ema = {k: v.detach().clone().float()
+               for k, v in model.state_dict().items()
+               if v.dtype.is_floating_point}
+        decay = float(cfg.train.ema_decay)
+
+        @torch.no_grad()
+        def update_ema():
+            state = model.state_dict()
+            for k, shadow in ema.items():
+                shadow.mul_(decay).add_(state[k].detach().float(), alpha=1.0 - decay)
+
+        def apply_weights(weights):
+            """Swap a weight dict in, returning the one it replaced."""
+            state = model.state_dict()
+            previous = {k: state[k].detach().clone() for k in weights}
+            model.load_state_dict({k: v.to(state[k].dtype) for k, v in weights.items()},
+                                  strict=False)
+            return previous
+
+        @torch.no_grad()
+        def mean_val_nll():
+            """Inner-validation negative log-likelihood, the configured stopping metric.
+
+            Never a financial metric: the inner-validation block also fits the
+            calibration map and the conformal quantile, and stopping on a Sharpe
+            computed from it would be the third use of one block.
+            """
+            model.eval()
+            total, n = 0.0, 0
+            for batch in dataset.iter_date_batches(dates_per_batch, shuffle=False,
+                                                   subset=val_dates):
+                for sub in batch.group_chunks(max_rows):
+                    t = sub.to_torch(dev)
+                    with torch.autocast("cuda", dtype=torch.bfloat16, enabled=amp):
+                        out = model(price=t["price"])
+                    nll = torch.nn.functional.cross_entropy(
+                        out.heads.logits.float(), t["y_dir"], reduction="sum")
+                    total += float(nll)
+                    n += int(t["y_dir"].numel())
+            return total / max(n, 1)
+
+        best, best_state, since_best, used = float("inf"), None, 0, 0
+        step = 0
         for epoch in range(epochs):
+            model.train()
             for batch in dataset.iter_date_batches(dates_per_batch, shuffle=True,
                                                    seed=seed + epoch, subset=train_dates):
-                for sub in batch.row_chunks(max_rows):
+                # Cut only on date boundaries: the ranking term is computed within a
+                # date, and a half cross-section is an easier problem than the one we
+                # report.
+                for sub in batch.group_chunks(max_rows):
                     t = sub.to_torch(dev)
                     opt.zero_grad(set_to_none=True)
                     # Activations in bf16, loss arithmetic in fp32. bf16 carries fp32's
                     # exponent range, so no gradient scaler is needed and the Gaussian
-                    # NLL cannot overflow through log-variance; the halved activation
-                    # footprint is what makes a 60x128 recurrent stack fit next to a
-                    # 4-block TCN on an 8 GB card.
+                    # NLL cannot overflow through log-variance.
                     with torch.autocast("cuda", dtype=torch.bfloat16, enabled=amp):
                         out = model(price=t["price"])
                     loss, _ = objective(
                         out.heads.logits.float(), out.heads.mu.float(),
                         out.heads.logvar.float(),
-                        t["y_dir"], t["y_ret"], t["weights"], None, epoch)
+                        t["y_dir"], t["y_ret"], t["weights"], t["group_ids"], epoch)
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.train.grad_clip)
                     opt.step()
+                    update_ema()
+                sched.step()
+                step += 1
+
+            # Early stopping is judged on the averaged weights, because those are the
+            # ones that will be used to predict.
+            live = apply_weights(ema)
+            score = mean_val_nll()
+            used = epoch + 1
+            if score < best - 1e-6:
+                best = score
+                best_state = {k: v.detach().clone() for k, v in ema.items()}
+                since_best = 0
+            else:
+                since_best += 1
+            apply_weights(live)
+            if since_best >= cfg.train.patience:
+                break
+
+        if best_state is not None:
+            apply_weights(best_state)
 
         @torch.no_grad()
         def infer(block: pd.DataFrame):
@@ -242,7 +353,7 @@ def make_finsentnet(cfg, frame: pd.DataFrame, epochs: int = 12, lr: float = 3e-4
             chunks = []
             for batch in dataset.iter_date_batches(dates_per_batch, shuffle=False,
                                                    subset=dates):
-                for sub in batch.row_chunks(max_rows):
+                for sub in batch.group_chunks(max_rows):
                     t = sub.to_torch(dev)
                     with torch.autocast("cuda", dtype=torch.bfloat16, enabled=amp):
                         out = model(price=t["price"])
@@ -269,12 +380,14 @@ def make_finsentnet(cfg, frame: pd.DataFrame, epochs: int = 12, lr: float = 3e-4
 
         lv, _, _, _ = infer(val)
         lt, mt, vt, gt = infer(test)
+        print(f"      fold {fold.index} seed {seed}: stopped at epoch {used}/{epochs}, "
+              f"inner-val NLL {best:.4f}")
         packed = _pack(train, val, test, lv, lt, mt, np.maximum(vt, 1e-10), gate=gt)
 
         # 13 folds x 3 seeds means 39 models are built in one process. Without an
         # explicit release the allocator holds each one's arena and fragments, which is
         # how a run that fits comfortably on fold 1 dies on fold 4.
-        del model, opt, objective
+        del model, opt, objective, ema, best_state
         if dev.type == "cuda":
             torch.cuda.empty_cache()
         return packed
@@ -298,8 +411,10 @@ def main() -> int:
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     ap.add_argument("--panel", default=str(PANEL))
     ap.add_argument("--out", default=str(OUT))
-    ap.add_argument("--epochs", type=int, default=12)
-    ap.add_argument("--max-rows", type=int, default=1536,
+    ap.add_argument("--epochs", type=int, default=None,
+                    help="override the configured epoch ceiling; early "
+                         "stopping usually bites well before it")
+    ap.add_argument("--max-rows", type=int, default=2048,
                     help="cap on rows per optimiser step; lower it if the device runs out")
     ap.add_argument("--skip-existing", action="store_true",
                     help="leave models whose panel is already on disk alone. The network "
