@@ -51,6 +51,10 @@
 \providecommand{\kwYearEnd}{\textbf{??}}
 \providecommand{\kwESSFactor}{\textbf{??}}
 \providecommand{\kwTests}{\textbf{??}}
+\providecommand{\kwParamsPrice}{\textbf{??}}
+\providecommand{\kwParamsTextPct}{\textbf{??}}
+\providecommand{\kwParamsText}{\textbf{??}}
+\providecommand{\kwParamsTotal}{\textbf{??}}
 \providecommand{\kwFolds}{\textbf{??}}
 \providecommand{\kwSeeds}{\textbf{??}}
 \providecommand{\kwPrimaryIC}{\textbf{??}}
@@ -711,42 +715,32 @@ log-likelihood.
 
 \subsection{Capacity}
 \label{sec:capacity}
-Table~\ref{tab:params} gives the realised parameter count by module, emitted by
-the implementation rather than estimated, and asserted against the
+Table~\ref{tab:T2_main} gives the realised parameter count by module, emitted
+by the implementation rather than estimated, and asserted against the
 specification by the test suite. Against roughly $8.8\times10^{5}$ training
 rows at an average uniqueness near $0.25$ --- about $2.2\times10^{5}$
 effectively independent samples --- the model carries about two effective
 samples per parameter. That is tight but defensible, and it is the ratio the
 low signal-to-noise findings of \citet{gu2020empirical} imply is necessary.
 
-\begin{table}[t]
-\centering
-\caption{Trainable parameters by module. Frozen FinBERT (110M) is an offline
-cache and does not appear. Asserted against the implementation by
-\texttt{tests/test\_model.py}.}
-\label{tab:params}
-\small
-\begin{tabular}{lrr}
-\toprule
-\textbf{Module} & \textbf{Parameters} & \textbf{\%}\\
-\midrule
-price: multi-scale convolution   & \num{9{,}696}  & 2.2\\
-price: pointwise mixer           & \num{6{,}208}  & 1.4\\
-price: dilated TCN (4 blocks)    & \num{99{,}328} & 22.1\\
-price: GRU $(64\to128)$          & \num{74{,}496} & 16.6\\
-price: normalisations            & \num{280}      & 0.1\\
-text: projection $768\to128$     & \num{98{,}688} & 22.0\\
-text: attention pooling $+$ MLP  & \num{26{,}624} & 5.9\\
-text: source embeddings          & \num{264}      & 0.1\\
-text: null embedding             & \num{128}      & 0.0\\
-fusion: multi-head attention     & \num{66{,}048} & 14.7\\
-fusion: gate $+$ normalisation   & \num{49{,}536} & 11.0\\
-heads: trunk $+$ three outputs   & \num{17{,}157} & 3.8\\
-\midrule
-\textbf{Total}                   & \textbf{\num{448{,}453}} & 100.0\\
-\bottomrule
-\end{tabular}
-\end{table}
+One qualification matters for reading every result in this paper.
+\kwParamsText{} of the \kwParamsTotal{} parameters, or \kwParamsTextPct{}\%,
+belong to the text pathway --- the projection, the attention pooling, the
+source and null embeddings. In the forced price-only state those parameters are
+carried but never receive a gradient from a real headline, so the model that
+actually produced our results has \kwParamsPrice{} live parameters and the
+effective samples-per-parameter ratio is correspondingly more comfortable than
+the design intended. We report the full count because it is the specified
+architecture, and we state the split here because a capacity argument that
+quietly counts inert parameters is overstating the model in one direction and
+understating its data efficiency in the other.
+
+\resulttable{T2_main}{Trainable parameters by module. Frozen FinBERT
+(110M) is an offline cache and does not appear.}
+{Asserted against the implementation by \texttt{tests/test\_model.py} and
+against \texttt{configs/base.yaml} by the configuration validator. The
+evaluated configuration is the forced price-only state, in which the text
+encoder emits its learned null embedding.}
 
 %==============================================================================
 \section{Training Objective}
