@@ -1367,18 +1367,36 @@ uninterpretable.}
 
 \resulttable{T4_main}{Calibration before and after guarded post-hoc
 calibration: expected and maximum calibration error, Brier score, negative
-log-likelihood; and conformal empirical coverage and mean set size at
-$\alpha\in\{0.05,0.10,0.20\}$.}
-{Fitted on inner-validation, evaluated on test, per fold.}
+log-likelihood.}
+{Fitted on inner-validation, evaluated on test, per fold. The guard admits the
+identity map as a candidate, so calibration cannot be a net loss out of sample.}
+
+\resulttable{T4b_main}{Conformal coverage on the untouched test blocks:
+empirical against nominal coverage, mean prediction-set size, and the singleton
+rate that the abstention gate keys on, across the full $\alpha$ grid.}
+{Coverage is a distribution-free guarantee and does not assume the model is
+accurate. The singleton rate is what decides whether the gate ever trades, and
+it is a property of the model's uncertainty rather than of the guarantee.}
 
 \resulttable{T5_main}{\textbf{The sizing experiment.} Four sizing rules applied
 to one fixed set of predictions: equal weight, raw-softmax Kelly,
 calibrated Kelly, and conformal-gated calibrated Kelly. Net Sharpe, Sortino,
-maximum drawdown, turnover, trade count, and paired block-bootstrap $p$-values
+maximum drawdown, turnover, names held, and paired block-bootstrap $p$-values
 against the equal-weight benchmark.}
 {Predictions are identical across rows; only the sizing rule varies, so the
 comparison is paired and most common variance cancels. Corollary~\ref{cor:ruin}
-predicts that raw-softmax Kelly may fall \emph{below} equal weighting.}
+predicts that raw-softmax Kelly may fall \emph{below} equal weighting. A rule
+holding no names has no return series and its Sharpe is reported as ``---''
+rather than as zero: declining to bet is not a bet that returned nothing.}
+
+\resulttable{T5b_main}{\textbf{Abstention is a position.} The conformal gate
+swept across $\alpha$ with predictions and sizing rule held fixed. The first
+row is the ungated book; subsequent rows loosen the confidence requirement.}
+{At small $\alpha$ the prediction set is rarely a singleton, the gate declines
+every name, and the book is flat --- and being flat is what saves it. The gate
+begins to trade only once $\alpha$ is loosened far enough for the model's own
+uncertainty to admit a single class, and this table shows what it pays to
+do so.}
 
 \resulttable{T6_main}{Economic evaluation: gross and net Sharpe at seven cost
 levels, break-even cost, annualised turnover, capacity estimate, Probabilistic
@@ -1462,12 +1480,43 @@ consequences, not an absence of ambition.
 \label{sec:limitations}
 
 \begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
+\item \textbf{The text modality is not evaluated, and this is the paper's
+  largest gap.} The news corpus available to us contains \num{5391} rows, of
+  which \num{72} are non-empty; those \num{72} carry \num{64} template titles
+  across \num{9} distinct timestamps. A corpus with nine timestamps cannot
+  support a point-in-time claim of any kind, so we did not attempt one. The
+  text encoder, the gated fusion block and modality dropout are specified in
+  Section~\ref{sec:model}, implemented, and unit-tested, but every number in
+  Section~\ref{sec:results} comes from the model run in a forced price-only
+  state. Readers should treat the fusion architecture as a specification we
+  offer for replication, not as a result we have demonstrated. Table~T9, which
+  was designed to regress the fusion gate on news flow, is empty for the same
+  reason and we report it empty rather than deleting it.
+\item \textbf{The ticker list is itself chosen ex post.} Our liquidity screen
+  is genuinely point-in-time and we verify that it never consults a future
+  price. But the pool it screens is a set of companies for which somebody
+  assembled price history in the present, and companies that delisted, merged
+  or went to zero are underrepresented in that pool regardless of how careful
+  the screen is. A point-in-time screen over a survivor-tilted pool inherits
+  the tilt. The honest reading is that our universe construction removes
+  survivorship bias one level down and not at the level that matters most; a
+  CRSP-style database with delisting returns is the only real fix, and we did
+  not have one. This cuts against a positive result, and our result is null, so
+  it is unlikely to have manufactured the finding we report --- but it would
+  matter a great deal to anyone who reproduced this work and found an edge.
+\item \textbf{Prices are back-adjusted.} Splits and dividends are folded into
+  the historical series, so the price at date $t$ in our panel is not the price
+  that printed on the tape at $t$. Returns are unaffected, which is what our
+  labels and our backtest consume, but any level-dependent quantity --- the
+  \$5 minimum-price screen in particular --- is evaluated against an adjusted
+  level rather than the traded one. The screen is therefore approximate near
+  its boundary.
 \item \textbf{Language-model pretraining leakage.} FinBERT was pretrained on
   financial corpora overlapping our evaluation window, so the encoder has seen
   text postdating some decisions in the test set. This is a recognised and
-  largely unsolved problem for language-model-based financial backtests. We
-  acknowledge it, and bound it where possible by reporting a subperiod strictly
-  after the pretraining cutoff.
+  largely unsolved problem for language-model-based financial backtests. It
+  does not bind on the results we report, since those are price-only, but it
+  would bind immediately on any replication that supplied a real corpus.
 \item \textbf{Single market, daily bars.} No intraday microstructure, no order
   imbalance, no implied volatility, no short interest. Implied volatility in
   particular is the market's own forward-looking statement and is omitted only
