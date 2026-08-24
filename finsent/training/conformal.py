@@ -211,18 +211,44 @@ class AdaptiveConformal:
     alpha_t: float = field(init=False)
     history: list[float] = field(default_factory=list, repr=False)
     _calibration_scores: np.ndarray = field(default_factory=lambda: np.array([]), repr=False)
+    _sorted_scores: np.ndarray = field(default_factory=lambda: np.array([]), repr=False)
+    _worker: object = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         self.alpha_t = float(self.alpha_target)
 
     def fit(self, probs: np.ndarray, labels: np.ndarray) -> "AdaptiveConformal":
-        self._calibration_scores = (
+        scores = (
             aps_scores(probs, labels) if self.score == "aps" else lac_scores(probs, labels)
         )
+        scores = np.asarray(scores, dtype=float).ravel()
+        # Sorted once here so that the per-step quantile is an index lookup. alpha_t moves
+        # on every observation, so a naive implementation recomputes a full quantile over
+        # the whole calibration set once per row: measured at 2.8 s for a 15k-row block
+        # against 3.5 ms for the split predictor, and over an hour across this study.
+        self._calibration_scores = scores[np.isfinite(scores)]
+        self._sorted_scores = np.sort(self._calibration_scores)
+        self._worker = SplitConformal(alpha=self.alpha_target, score=self.score)
+        self._worker.n_calibration = int(self._sorted_scores.size)
         return self
 
     def _quantile(self) -> float:
-        return conformal_quantile(self._calibration_scores, float(np.clip(self.alpha_t, 1e-3, 0.5)))
+        """``ceil((n+1)(1-alpha))/n`` read off the pre-sorted scores.
+
+        Identical to :func:`conformal_quantile` by construction. That function takes the
+        ``method="higher"`` quantile at the same level, and numpy indexes that family by
+        ``ceil(level * (n - 1))`` -- scaled by ``n-1``, not ``n``, which is the
+        off-by-one that makes a hand-rolled version disagree in the fourth decimal.
+        """
+        s = getattr(self, "_sorted_scores", None)
+        if s is None or s.size == 0:
+            return conformal_quantile(self._calibration_scores,
+                                      float(np.clip(self.alpha_t, 1e-3, 0.5)))
+        n = s.size
+        alpha = float(np.clip(self.alpha_t, 1e-3, 0.5))
+        level = min(np.ceil((n + 1) * (1.0 - alpha)) / n, 1.0)
+        idx = int(np.ceil(level * (n - 1)))
+        return float(s[min(max(idx, 0), n - 1)])
 
     def step(self, probs_row: np.ndarray, label: int | None = None) -> np.ndarray:
         """Emit a prediction set for one observation, then update ``alpha_t``.
@@ -230,10 +256,13 @@ class AdaptiveConformal:
         ``label`` is the realised outcome, available only *after* the decision. Passing
         it before acting on the set would be a leak; the ordering here mirrors live use.
         """
-        predictor = SplitConformal(alpha=float(np.clip(self.alpha_t, 1e-3, 0.5)),
-                                   score=self.score)
+        predictor = getattr(self, "_worker", None)
+        if predictor is None:
+            predictor = SplitConformal(alpha=self.alpha_target, score=self.score)
+            predictor.n_calibration = int(self._calibration_scores.size)
+            self._worker = predictor
+        predictor.alpha = float(np.clip(self.alpha_t, 1e-3, 0.5))
         predictor.q_hat = self._quantile()
-        predictor.n_calibration = int(self._calibration_scores.size)
         sets = predictor.predict_sets(np.atleast_2d(probs_row))
 
         if label is not None:
