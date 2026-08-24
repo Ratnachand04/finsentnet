@@ -134,10 +134,17 @@ else:
     print("  skip  generated-artifact check: report script not found")
 
 # 10. draft-mode state
-banners = len(re.findall(r"\\pending\{", src))
-mode = re.search(r"\\resultsready(true|false)", src)
-print(f"  info  pending banners: {banners}   results mode: "
-      f"{mode.group(0) if mode else 'unset'}")
+# Strip comments first: the preamble documents both switch settings in prose, and
+# reading the first match found the documentation rather than the switch.
+uncommented = re.sub(r"(?m)(?<!\\)%.*$", "", src)
+banners = len(re.findall(r"\\pending\{", uncommented))
+mode = re.search(r"^\\resultsready(true|false)", uncommented, re.M)
+state = mode.group(1) if mode else "unset"
+if state == "true":
+    note = f"{banners} banner(s) present but inert" if banners else "no banners"
+else:
+    note = f"{banners} banner(s) will render"
+print(f"  info  results mode: \\resultsready{state}   ({note})")
 tabs = re.findall(r"\\resulttable\{([A-Za-z0-9_]+)\}", src)
 print(f"  info  result tables: {len(tabs)} {sorted(set(tabs))}")
 
