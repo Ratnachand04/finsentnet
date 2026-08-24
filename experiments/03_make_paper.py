@@ -46,12 +46,53 @@ PRETTY = {
 
 
 # --------------------------------------------------------------------------------------
+def _latex_unsafe_cells(df: pd.DataFrame) -> list[str]:
+    """Headings or cells carrying a LaTeX special that is neither escaped nor in math.
+
+    We write every table by hand in this module, so this is a guard against a typo
+    rather than against hostile input. It ignores anything inside $...$, since that is
+    exactly where the intentional LaTeX lives.
+    """
+    import re as _re
+
+    def offending(text: str) -> bool:
+        stripped = _re.sub(r"\$[^$]*\$", "", str(text))
+        return bool(_re.search(r"(?<!\\)[_%&#]", stripped))
+
+    bad = [f"heading {c!r}" for c in df.columns if offending(c)]
+    for col in df.columns:
+        # Test the values themselves rather than the column dtype: recent pandas infers
+        # StringDtype rather than object for text columns, so a dtype == object check
+        # silently skips every string in the frame and the guard passes on anything.
+        for value in df[col].unique():
+            if isinstance(value, str) and offending(value):
+                bad.append(f"{col}={value!r}")
+    return bad[:6]
+
+
 def write_table(tid: str, df: pd.DataFrame, caption: str, prov: Provenance,
                 note: str = "", float_fmt: str = "%.4f") -> None:
     TABLES.mkdir(parents=True, exist_ok=True)
-    df.to_csv(TABLES / f"{tid}.csv", index=False)
-    body = df.to_latex(index=False, escape=True,
-                       float_format=lambda v: (float_fmt % v) if np.isfinite(v) else "---")
+    TABLES.joinpath(f"{tid}.csv").write_text(df.to_csv(index=False), encoding="utf-8")
+
+    # escape=False, because several column headings are deliberately LaTeX: "$lpha$"
+    # and "Macro $F_1$" render as literal source under pandas' escaping, which is how
+    # a column called alpha ended up printed as \$	extbackslash alpha\$. Nothing here
+    # comes from user input -- every heading and cell is written in this file -- but a
+    # stray underscore would still break the build silently, so check rather than trust.
+    unsafe = _latex_unsafe_cells(df)
+    if unsafe:
+        raise ValueError(
+            f"{tid}: unescaped LaTeX specials in {unsafe}; escape them at the source "
+            "or the table will not compile"
+        )
+
+    body = df.to_latex(
+        index=False, escape=False,
+        # float_format is not consulted for missing values; na_rep is.
+        na_rep="---",
+        float_format=lambda v: (float_fmt % v) if np.isfinite(v) else "---",
+    )
     extra = f"\\\\[1pt]{note}" if note else ""
     tex = (
         f"% {tid}\n"
