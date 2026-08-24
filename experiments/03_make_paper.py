@@ -671,6 +671,11 @@ def main() -> int:
     if len(prim3):
         key["kwPrimaryIC"] = f"{float(prim3['Rank IC'].iloc[0]):+.4f}"
         key["kwPrimaryICt"] = f"{float(prim3['HAC t'].iloc[0]):+.2f}"
+        # The seed spread belongs next to the point estimate. When it is of the same
+        # order, a single-seed result is not a result, and the paper says so.
+        key["kwPrimaryICsd"] = f"{float(prim3['IC sd'].iloc[0]):.4f}"
+        key["kwPrimaryAcc"] = f"{float(prim3['Acc.'].iloc[0]):.4f}"
+        key["kwPrimaryMajority"] = f"{float(prim3['Majority'].iloc[0]):.4f}"
     if cov_files and len(cov_t):
         for a, name in ((0.05, "kwCovAFive"), (0.10, "kwCovATen"), (0.20, "kwCovATwenty")):
             hit = cov_t[np.isclose(cov_t["alpha"], a)]
