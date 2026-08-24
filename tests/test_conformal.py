@@ -250,3 +250,50 @@ def test_adaptive_consumes_the_label_only_after_emitting_the_set():
         "the emitted set depends on the label it has not seen yet"
     )
     assert online.alpha_t == before, "fitting alone must not move alpha"
+
+
+def test_adaptive_quantile_lookup_equals_the_reference_exactly():
+    """The online quantile is an index into pre-sorted scores; it must not approximate.
+
+    alpha_t moves on every observation, so the naive implementation recomputed a full
+    quantile over the whole calibration set once per row. Reading it off a sorted array
+    instead is only legitimate if it agrees with ``conformal_quantile`` bit for bit --
+    and the obvious index, ceil(level*n)-1, does not: numpy's ``method="higher"`` scales
+    by n-1, and the difference shows up in the fourth decimal.
+    """
+    rng = np.random.default_rng(0)
+    for n in (37, 500, 4096):
+        scores = rng.random(n)
+        online = AdaptiveConformal(alpha_target=0.10, gamma=0.005, score="aps")
+        online._calibration_scores = scores
+        online._sorted_scores = np.sort(scores)
+        for alpha in np.linspace(0.001, 0.5, 120):
+            online.alpha_t = float(alpha)
+            assert online._quantile() == conformal_quantile(scores, float(alpha)), (
+                f"indexed quantile disagrees at n={n}, alpha={alpha:.4f}"
+            )
+
+
+def test_adaptive_run_is_not_quadratic_in_the_test_block():
+    """Guards the fix: doubling the block must not quadruple the work."""
+    import time
+
+    rng = np.random.default_rng(2)
+
+    def timed(n):
+        y = rng.integers(0, 3, n)
+        p = rng.random((n, 3)); p /= p.sum(axis=1, keepdims=True)
+        yt = rng.integers(0, 3, n)
+        pt = rng.random((n, 3)); pt /= pt.sum(axis=1, keepdims=True)
+        online = AdaptiveConformal(alpha_target=0.10, gamma=0.005, score="aps").fit(p, y)
+        start = time.perf_counter()
+        online.run(pt, yt)
+        return time.perf_counter() - start
+
+    timed(500)                       # warm the interpreter
+    small, large = timed(1000), timed(4000)
+    ratio = large / max(small, 1e-6)
+    assert ratio < 8.0, (
+        f"4x the rows cost {ratio:.1f}x the time; the per-step quantile is scaling with "
+        "the calibration set again"
+    )
