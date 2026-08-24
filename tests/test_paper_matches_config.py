@@ -160,3 +160,50 @@ def test_the_split_protocol_matches_the_configuration():
     embargo = re.search(r"embargo ([\d.]+)\\% of the sample", para)
     assert embargo, "the embargo is no longer stated"
     assert float(embargo.group(1)) / 100.0 == pytest.approx(d.embargo_pct)
+
+
+def test_the_model_section_describes_the_model_that_exists():
+    """Section 4 states the architecture in prose; the configuration builds it.
+
+    These are the numbers a reader would use to reimplement the model, so a drift here
+    is worse than a drift in a result: the result is at least labelled as measured.
+    """
+    text = " ".join(PAPER.read_text(encoding="utf-8").split())
+    cfg = load_config()
+
+    width = re.search(r"model width \$d=(\d+)\$", text)
+    assert width and int(width.group(1)) == cfg.model.d_model
+
+    heads = re.search(r"fusion heads (\d+)", text)
+    assert heads and int(heads.group(1)) == cfg.model.fusion_heads
+
+    dil = re.search(r"dilations \$\\\{([\d,]+)\\\}\$", text)
+    assert dil, "the TCN dilations are no longer stated"
+    assert tuple(int(d) for d in dil.group(1).split(",")) == tuple(cfg.model.tcn_dilations)
+
+    drop = re.search(r"\$p_\{\\mathrm\{drop\}\}=([\d.]+)\$", text)
+    assert drop, "the modality-dropout rate is no longer stated"
+    assert float(drop.group(1)) == pytest.approx(cfg.model.modality_dropout_text)
+
+    clamp = re.search(r"clamped to \$\[(-?\d+),\s*(-?\d+)\]\$", text)
+    assert clamp, "the log-variance clamp is no longer stated"
+    import inspect  # noqa: PLC0415
+
+    from finsent.models.finsentnet_c import FinSentNetC  # noqa: PLC0415
+
+    lo, hi = inspect.signature(FinSentNetC.__init__).parameters["logvar_clamp"].default
+    assert (float(clamp.group(1)), float(clamp.group(2))) == (lo, hi), (
+        f"the paper clamps log-variance to [{clamp.group(1)}, {clamp.group(2)}] and the "
+        f"model to [{lo}, {hi}]"
+    )
+
+
+def test_the_gru_is_unidirectional_as_the_paper_insists():
+    """A backward pass would read the future, which is the reason the paper gives."""
+    text = " ".join(PAPER.read_text(encoding="utf-8").split())
+    assert "Unidirectionality is deliberate" in text, (
+        "the paper no longer justifies the unidirectional GRU"
+    )
+    assert load_config().model.gru_bidirectional is False, (
+        "the configuration builds a bidirectional GRU while the paper claims otherwise"
+    )
