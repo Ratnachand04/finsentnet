@@ -244,6 +244,8 @@ def main() -> int:
             g["y_true"].to_numpy(), probs(g).argmax(1))["mcc"])
         bin_m, _, _ = per_seed(panel, lambda g: M.classification_metrics(
             g["y_true"].to_numpy(), probs(g).argmax(1))["binary_accuracy"])
+        f1_m, _, _ = per_seed(panel, lambda g: M.classification_metrics(
+            g["y_true"].to_numpy(), probs(g).argmax(1))["macro_f1"])
         maj = M.classification_metrics(panel["y_true"].to_numpy(),
                                        probs(panel).argmax(1))["majority_baseline"]
         ic_full = M.information_coefficient(panel["score"], panel["fwd_ret"], panel["date"])
@@ -252,7 +254,8 @@ def main() -> int:
         rows.append({
             "Model": PRETTY.get(name, name),
             "Acc.": acc_m, "Acc. sd": acc_s, "Bal. acc.": bal_m,
-            "Majority": maj, "Binary acc.": bin_m, "MCC": mcc_m,
+            "Majority": maj, "Binary acc.": bin_m,
+            "Macro $F_1$": f1_m, "MCC": mcc_m,
             "Rank IC": ic_m, "IC sd": ic_s, "HAC t": summ.t_stat,
         })
     t3 = pd.DataFrame(rows)
@@ -272,12 +275,37 @@ def main() -> int:
         dm.append(S.diebold_mariano(-j["a"].to_numpy(), -j["b"].to_numpy(),
                                     lags=cfg.eval.hac_lags).p_value)
     t3["DM $p$ vs ours"] = dm
+
+    # Pairwise DM run once per baseline and read at its smallest p-value is precisely
+    # the multiple-comparison error the SPA test exists to control. Reported across the
+    # whole family, in one statement, against the null signal as benchmark.
+    spa_note = ""
+    try:
+        bench = ic_series.get("null_signal")
+        others = {k: v for k, v in ic_series.items()
+                  if k not in ("null_signal", "buy_and_hold")}
+        if bench is not None and len(others) >= 2:
+            joined = pd.concat([bench.rename("bench")]
+                               + [v.rename(k) for k, v in others.items()],
+                               axis=1).dropna()
+            if len(joined) > 200:
+                spa = S.hansen_spa(-joined["bench"].to_numpy(),
+                                   -joined.drop(columns=["bench"]).to_numpy().T,
+                                   block_mean=cfg.eval.block_mean, seed=0)
+                spa_note = (f" Hansen SPA across {joined.shape[1]-1} models against the "
+                            f"null signal: $p={spa.get('p_value', float('nan')):.3f}$, so "
+                            f"the best of them is "
+                            f"{'not ' if spa.get('p_value', 1) > 0.05 else ''}"
+                            f"distinguishable from the family's best under chance.")
+    except Exception as exc:
+        spa_note = f" Hansen SPA unavailable: {exc}."
+
     write_table("T3_main", t3,
                 "Predictive comparison under the identical purged walk-forward protocol. "
                 "Accuracy and IC are means over seeds with standard deviations; the "
                 "Newey--West $t$-statistic is computed on the pooled IC series.", prov,
                 note=("Buy-and-hold emits a constant cross-sectional score, so its rank IC "
-                      "is undefined by construction rather than zero."))
+                      "is undefined by construction rather than zero." + spa_note))
 
     # ---------------------------------------------------------------- T4: calibration
     rows = []
@@ -291,6 +319,11 @@ def main() -> int:
             "ECE raw": r["ece"], "ECE cal.": c["ece"],
             "MCE raw": r["mce"], "MCE cal.": c["mce"],
             "Brier raw": M.brier_score(raw, y), "Brier cal.": M.brier_score(cal, y),
+            # The caption promises a negative log-likelihood and the column was missing.
+            # Clipped before the log so a confidently wrong row cannot return infinity
+            # and take the whole column with it.
+            "NLL raw": float(-np.log(np.clip(raw[np.arange(len(y)), y], 1e-12, 1)).mean()),
+            "NLL cal.": float(-np.log(np.clip(cal[np.arange(len(y)), y], 1e-12, 1)).mean()),
             "Overconf. raw": r["overconfidence"],
         })
     write_table("T4_main", pd.DataFrame(rows),
