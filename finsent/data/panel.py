@@ -50,6 +50,47 @@ class Batch:
     def __len__(self) -> int:
         return int(self.price.shape[0])
 
+    def slice(self, lo: int, hi: int) -> "Batch":
+        """A row-slice of this batch.
+
+        Date-batches are sized in *dates*, but the number of names in the universe
+        varies across the panel, so a fixed date count yields a variable row count and
+        therefore a variable activation footprint. Capping by rows is what keeps a
+        training step inside a fixed memory budget; on an 8 GB card the difference is
+        between a run that finishes and a run that dies with cudaErrorUnknown four
+        folds in.
+
+        Slicing rows is safe for this model because the loss carries no
+        cross-sectional coupling: the ranking term is the only date-coupled component
+        and it is disabled in the price-only configuration, so a summed sub-batch
+        gradient equals the full-batch gradient up to the mean normalisation.
+        """
+        def s(a):
+            return a[lo:hi] if getattr(a, "size", 0) else a
+
+        return Batch(
+            price=s(self.price),
+            text_emb=s(self.text_emb),
+            text_mask=s(self.text_mask),
+            lag_hours=s(self.lag_hours),
+            source_ids=s(self.source_ids),
+            y_dir=s(self.y_dir),
+            y_ret=s(self.y_ret),
+            weights=s(self.weights),
+            group_ids=s(self.group_ids),
+            tickers=s(self.tickers),
+            dates=s(self.dates),
+        )
+
+    def row_chunks(self, max_rows: int):
+        """Yield row-slices of at most ``max_rows`` rows, or self when it already fits."""
+        n = len(self)
+        if max_rows <= 0 or n <= max_rows:
+            yield self
+            return
+        for lo in range(0, n, max_rows):
+            yield self.slice(lo, min(lo + max_rows, n))
+
     def to_torch(self, device=None):
         """Materialise as torch tensors. Imported lazily so NumPy users never need it."""
         import torch
