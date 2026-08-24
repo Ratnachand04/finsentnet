@@ -195,6 +195,7 @@ def main() -> int:
               f"timestamps, so the text modality is not evaluated."))
 
     # ---------------------------------------------------------------- T2: parameters
+    _key_params: dict[str, object] = {}
     try:
         import torch  # noqa: F401
         from finsent.models.finsentnet_c import FinSentNetC
@@ -202,6 +203,13 @@ def main() -> int:
         total = counts.pop("TOTAL")
         t2 = pd.DataFrame([{"Module": k, "Parameters": v,
                             "Percent": 100.0 * v / total} for k, v in counts.items()])
+        # The text pathway is carried but never trained in the price-only state, and
+        # a capacity argument that ignores that is overstating the model.
+        _txt = sum(v for k, v in counts.items() if k.startswith("text"))
+        _key_params = {"kwParamsTotal": f"{total:,}",
+                       "kwParamsText": f"{_txt:,}",
+                       "kwParamsTextPct": f"{100.0 * _txt / total:.0f}",
+                       "kwParamsPrice": f"{total - _txt:,}"}
         t2 = t2.sort_values("Parameters", ascending=False)
         t2.loc[len(t2)] = {"Module": "TOTAL", "Parameters": total, "Percent": 100.0}
         write_table("T2_main", t2,
@@ -533,6 +541,7 @@ def main() -> int:
             for f in sorted(Path("tests").glob("test_*.py"))
         ),
     }
+    key.update(_key_params)
     if PRIMARY in panels:
         key["kwSeeds"] = f"{panels[PRIMARY]['seed'].nunique()}"
         key["kwFolds"] = f"{panels[PRIMARY]['fold'].nunique()}"
