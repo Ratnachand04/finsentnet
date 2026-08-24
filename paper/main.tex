@@ -251,15 +251,14 @@ which a confident model loses to a flat one.
 
 \paragraph{Evidence discipline.}
 Equity return prediction is a field in which reported results routinely fail to
-replicate, and the causes are catalogued: survivorship in the universe,
-overlapping labels, unpurged splits, unstated execution conventions, and
-selection over a large undeclared trial budget. We adopt the corresponding
-controls throughout and --- because a control is only as good as its
-verification --- we additionally report, in Section~\ref{sec:validation}, what
-happens when two of them are removed. Both failure modes were found by
-instrumentation rather than inspection, both would have produced a
-publishable-looking number, and neither is detectable by any train/test
-splitter.
+replicate, and the causes are well catalogued. Survivorship in the universe.
+Overlapping labels. Unpurged splits. Unstated execution conventions. Selection
+over a large and undeclared trial budget. We adopt the corresponding controls
+throughout, and because a control is worth only as much as its verification, we
+also report in Section~\ref{sec:validation} what happens when two of them are
+switched off. Instrumentation found both failure modes; reading the code found
+neither. Each would have produced a publishable-looking number, and no train/test
+splitter would have objected to either.
 
 \paragraph{Contributions.}
 \begin{enumerate}[leftmargin=1.6em,itemsep=2pt]
@@ -388,22 +387,21 @@ covariance estimation follows \citet{ledoit2004well}.
 \label{sec:formulation}
 
 \subsection{Universe}
-Let $\mathcal{U}_t$ denote the tradeable names on session $t$. It is
-constructed \emph{point-in-time}: membership on $t$ uses only information
-available strictly before $t$, and delisted names simply cease to appear. Our
-default construction is a liquidity screen --- top $N$ by trailing median
-dollar volume, rebalanced monthly, subject to a price floor --- because it is
-fully reproducible from freely available daily data and contains no forward
-information. We describe it as a liquidity-screened universe rather than as an
-index, which is the accurate description.
+\label{sec:universe}
+Let $\mathcal{U}_t$ denote the tradeable names on session $t$. Membership is
+constructed point-in-time, so what is known on $t$ uses only information available
+strictly before it, and a delisted name simply stops appearing. Our default
+construction is a liquidity screen: the top $N$ by trailing median dollar volume,
+rebalanced monthly, subject to a price floor. We chose it because it reproduces
+from freely available daily data and carries no forward information. Calling it a
+liquidity-screened universe, and not an index, is the accurate description.
 
 Applying a \emph{current} index membership list retroactively is the most
-consequential data defect available in this setting: names leave an index
-disproportionately after poor performance, so a backtest on today's members is
-a backtest on companies selected for having survived. Our implementation ships
-a membership diagnostic that fails when no name present on the first date is
-absent by the last, since that pattern is the signature of a retroactively
-applied list.
+consequential data defect available in this setting. Names leave an index
+disproportionately after poor performance, so a backtest on today's members is a
+backtest on companies selected for having survived. Our implementation ships a
+membership diagnostic that fails when no name present on the first date is absent
+by the last, since that pattern is the signature of a list applied backwards.
 
 \subsection{The timestamp contract}
 \label{sec:timestamps}
@@ -729,24 +727,23 @@ log-likelihood.
 
 \subsection{Capacity}
 \label{sec:capacity}
-Table~\ref{tab:T2_main} gives the realised parameter count by module, emitted
-by the implementation rather than estimated, and asserted against the
-specification by the test suite. Against roughly $8.8\times10^{5}$ training
-rows at an average uniqueness near $0.25$ --- about $2.2\times10^{5}$
-effectively independent samples --- the model carries about two effective
-samples per parameter. That is tight but defensible, and it is the ratio the
-low signal-to-noise findings of \citet{gu2020empirical} imply is necessary.
+Table~\ref{tab:T2_main} gives the realised parameter count by module. It is emitted
+by the implementation and asserted against the specification by the test suite, so
+it cannot drift from the model that produced our numbers. Roughly
+$8.8\times10^{5}$ training rows at an average uniqueness near $0.25$ leave about
+$2.2\times10^{5}$ effectively independent samples, which works out at close to two
+such samples per parameter. That is tight. We think it is defensible, and it is the
+ratio implied by the low signal-to-noise findings of \citet{gu2020empirical}.
 
 One qualification matters for reading every result in this paper.
 \kwParamsText{} of the \kwParamsTotal{} parameters, or \kwParamsTextPct{}\%,
-belong to the text pathway --- the projection, the attention pooling, the
-source and null embeddings. In the forced price-only state those parameters are
-carried but never receive a gradient from a real headline, so the model that
-actually produced our results has \kwParamsPrice{} live parameters and the
-effective samples-per-parameter ratio is correspondingly more comfortable than
-the design intended. We report the full count because it is the specified
-architecture, and we state the split here because a capacity argument that
-quietly counts inert parameters is overstating the model in one direction and
+belong to the text pathway: the projection, the attention pooling, and the source
+and null embeddings. In the forced price-only state none of them ever receives a
+gradient from a real headline. The model that produced our results therefore
+carries \kwParamsPrice{} live parameters, and its true samples-per-parameter ratio
+is more comfortable than the design intended. We quote the full count because it
+describes the specified architecture. We state the split here because a capacity
+argument that counts inert parameters overstates the model in one direction while
 understating its data efficiency in the other.
 
 \resulttable{T2_main}{Trainable parameters by module. Frozen FinBERT
@@ -1091,29 +1088,30 @@ This section is written before the results and is not revised in light of them.
 
 \paragraph{Data.}
 A point-in-time liquidity-screened universe of \kwNames{} US equities over
-\kwYearStart--\kwYearEnd{}, \kwTickerDays{} ticker-days across \kwSessions{}
-sessions. The screen is applied at each date using only information available
-at that date --- price above \$5 and trailing dollar volume above \$5M, ranked
-on trailing data --- and we verify that it never consults a future bar. We are
-nonetheless explicit that this removes survivorship bias one level down and not
-at the level that matters most: the pool the screen ranks is a set of companies
-for which price history exists in the present, and it does not include
-delisting returns. We had no CRSP-style database with them, and we say so here
-rather than in a footnote, because a point-in-time screen over a survivor-tilted
-pool inherits the tilt.
+\kwYearStart--\kwYearEnd{}, comprising \kwTickerDays{} ticker-days across
+\kwSessions{} sessions. The screen runs at each date on information available at
+that date, taking names priced above \$5 with trailing dollar volume above \$5M and
+ranking them on trailing data, and we verify that it never consults a future bar.
+
+That verification buys less than it appears to. The screen removes survivorship
+bias one level down, not at the level that matters most. The pool it ranks is a set
+of companies for which price history exists in the present, and it carries no
+delisting returns; we had no CRSP-style database that does. A point-in-time screen
+over a survivor-tilted pool inherits the tilt, and we would rather say so in the
+protocol section than bury it in a footnote.
 
 The design called for headlines from a public, citable corpus with first-print
-timestamps \citep{dong2024fnspid}, so that reviewers could rerun the text
-modality. The corpus actually available to us does not meet that bar: of
-\num{5391} news rows, \num{72} are non-empty, and those carry \num{64} template
-titles across \num{9} distinct timestamps. We therefore report the text
-modality as not evaluated and run the model in a forced price-only state,
-rather than reporting a text result that rests on nine timestamps. We do not
-scrape as a substitute: a retrospective scrape returns what is currently
-indexed rather than what was visible, and link rot, last-modified timestamps and
-post-hoc editorial revision are contamination that a publication lag does not
-address. Table~\ref{tab:T1_main} reports the panel and states the corpus audit
-in its footnote.
+timestamps \citep{dong2024fnspid}, so that a reviewer could rerun the text
+modality. What we actually hold does not meet that bar. Of \num{5391} news rows,
+\num{72} are non-empty, and those \num{72} carry \num{64} template titles across
+\num{9} distinct timestamps. We therefore report the text modality as not
+evaluated and run the model with the branch forced to its null embedding. Nine
+timestamps cannot support a point-in-time claim, and we would be inventing one if
+we tried. Scraping is not a substitute either: a retrospective scrape returns what
+is indexed today, not what was visible then, and link rot, last-modified stamps and
+post-hoc editorial revision are contamination that no publication lag addresses.
+Table~\ref{tab:T1_main} reports the panel and states the corpus audit in its
+footnote.
 
 \paragraph{Splits.}
 Purged, embargoed walk-forward with an expanding training window of at least
@@ -1483,22 +1481,21 @@ Table~\ref{tab:T1_main} describes what the study actually ran on:
 \kwYearStart--\kwYearEnd{}, with \kwNames{} names in the screen. Two columns
 deserve a reader's attention before any result is interpreted.
 
-The first is the class balance by year. The dead band is scaled by a causal
-volatility estimate rather than fixed, which is what keeps the label from
-degenerating into a volatility detector, but it does not make the three classes
-equal: the \Up{} share exceeds the \Down{} share in most years, because the
-sample covers a decade in which US equities rose. That asymmetry is why the
-majority-class row in Table~\ref{tab:T3_main} is not decorative, and it is also
-what broke our first attempt at position sizing --- a detail we record in
-Section~\ref{sec:discussion} rather than quietly fix, because the failure is
-instructive.
+The first is the class balance by year. Scaling the dead band by a causal
+volatility estimate, instead of fixing it, is what stops the label degenerating
+into a volatility detector. It does not make the three classes equal. The \Up{}
+share exceeds the \Down{} share in most years, because the sample covers a decade
+in which US equities rose. That asymmetry is why the majority-class row in
+Table~\ref{tab:T3_main} earns its place, and it is also what broke our first
+attempt at position sizing. We record that failure in
+Section~\ref{sec:discussion} instead of quietly repairing it, since the way it
+broke is more useful than the repair.
 
-The second is the effective sample size. Overlapping five-day labels mean the
-row count overstates the information content by a factor of \kwESSFactor{},
-which is close to the $h+1$ the horizon implies. Every weighted loss and every
-standard error in this paper uses the corrected figure. A reader who compares
-our sample size to a paper that quotes raw rows should divide by that factor
-first.
+The second is the effective sample size. Overlapping five-day labels mean the row
+count overstates the information content by a factor of \kwESSFactor{}, close to
+the $h+1$ the horizon implies. Every weighted loss and every standard error in
+this paper uses the corrected figure. A reader comparing our sample size against a
+paper that quotes raw rows should divide by that factor first.
 
 The news-coverage columns the design called for are absent, and their absence is
 not an oversight. The corpus audit is stated in the table's own footnote.
@@ -1594,12 +1591,12 @@ do so.}
 Table~\ref{tab:T6_main} is where a paper of this kind usually makes its claim,
 and where this one declines to. Three numbers in it carry the weight.
 
-The break-even cost is the first. It answers the only question a practitioner
-asks of a backtest --- how much friction the signal can absorb before it stops
-paying --- and it is reported here rather than a single net Sharpe at a
-flattering assumption. A negative break-even cost is not a small edge; it means
-the book loses money gross, before a single basis point is charged, and no
-execution improvement can rescue it.
+The break-even cost is the first. It answers the only question a practitioner asks
+of a backtest, which is how much friction the signal absorbs before it stops
+paying, and we report it in place of a single net Sharpe quoted at whichever
+assumption flatters the result. A negative break-even cost is not a thin edge. It
+means the book loses money gross, before a basis point is charged, and no
+improvement in execution can rescue it.
 
 The second is turnover. A decile long--short book rebalanced every five
 sessions substantially replaces itself at each rebalance, and the annualised
@@ -1745,50 +1742,52 @@ not a weakness of the experiment; it is the point of the paper.
 
 \paragraph{On negative results.}
 We committed in advance to reporting every pre-specified test whichever way it
-fell, and this section is what that commitment cost. The headline-shuffle null
-test and the conditional high-news-flow ablation cannot be run at all, because
-the corpus that would support them does not exist in usable form; we report
-them as unavailable rather than substituting a proxy that would have been
-easier to write and impossible to check. The architecture ablations are
-withheld for a different and stronger reason, given in
-Table~\ref{tab:T7_main}: the unablated model's rank information coefficient is
-\kwPrimaryIC{} with a Newey--West $t$ of \kwPrimaryICt{}, so the difference
-between any two ablations of it is the difference between two noise terms. A
-table in which every component helps is the signature of a design tuned on its
-own evaluation, and referees are right to read it that way. A table in which
-every component helps by an amount smaller than its own standard error is
-worse, because it looks like evidence.
+fell. This section is what that commitment cost.
+
+The headline-shuffle null test and the conditional high-news-flow ablation cannot
+be run at all. Both need a corpus, and ours does not exist in usable form. We
+report them as unavailable instead of substituting a proxy that would have been
+easier to write and impossible for a referee to check.
+
+The architecture ablations are withheld for a different and stronger reason, set
+out in Table~\ref{tab:T7_main}. The unablated model's rank information
+coefficient is \kwPrimaryIC{}, with a Newey--West $t$ of \kwPrimaryICt{}. The gap
+between any two ablations of a model like that is the gap between two noise terms.
+A table in which every component helps is the signature of a design tuned on its
+own evaluation, and referees are right to read it that way. A table in which every
+component helps by less than its own standard error is worse, because it still
+looks like evidence.
 
 \paragraph{What a null result does and does not establish.}
-We did not find a tradeable edge, and we want to be precise about the scope of
-that statement. It is a claim about six models, one universe of \kwNames{}
-liquid US names, one horizon of five sessions, and one decade. It is not a
-claim that short-horizon cross-sectional prediction is impossible, and it is
-certainly not a claim that news carries no information about returns --- we
-were unable to test that second proposition at all. What the null does
-establish is narrower and, we think, more useful: that a protocol built to
-resist its own optimism will return nothing when there is nothing there. Every
-component of this pipeline had the opportunity to manufacture a result. The
-execution-lag defect of Section~\ref{sec:lagdefect} was worth an apparent rank
-IC of \num{0.108} on driftless data, more than an order of magnitude above any
-signal we actually measure. Unguarded post-hoc calibration was worth a tenfold apparent
-improvement in calibration error while degrading it out of sample. Sizing on an
-uncentred conditional mean silently saturated every position at the cap. Each
-of these was caught by a control that was verified rather than asserted, and
-each would have produced a publishable-looking number had it not been.
+We did not find a tradeable edge. We want to be precise about how far that
+statement reaches. It covers six models, one universe of \kwNames{} liquid US
+names, a five-session horizon and a single decade. It is not a claim that
+short-horizon cross-sectional prediction is impossible. It is emphatically not a
+claim that news carries no information about returns, since we were unable to test
+that proposition at all.
+
+What the null does establish is narrower and, we think, more useful. A protocol
+built to resist its own optimism will return nothing when there is nothing there.
+Every component of this pipeline had an opportunity to manufacture a result. The
+execution-lag defect of Section~\ref{sec:lagdefect} was worth an apparent rank IC
+of \num{0.108} on data constructed to contain no signal, more than an order of
+magnitude above anything we actually measure. Unguarded post-hoc calibration was
+worth a tenfold apparent improvement in calibration error while degrading it out
+of sample. Sizing on an uncentred conditional mean pinned every position to its
+cap. A verified control caught each one. Any of the three, left alone, would have
+yielded a number worth writing up.
 
 \paragraph{The decision layer is the part that worked.}
-The conformal layer delivered its guarantee to three decimal places on real
-market data --- \kwCovAFive{} empirical against a nominal \num{0.95}
---- without assuming anything about the model's accuracy, which is exactly what
-a distribution-free guarantee is for. Its practical consequence here is
-uncomfortable and instructive. Because the model has no edge, its prediction
-sets are almost never singletons, so the abstention gate declines every name
-and holds \kwGateNamesHeld{} positions. The gated book therefore returns
-nothing, and returning nothing is the best outcome available: the three
-ungated sizing rules all lose money. The gate is not clever. It is simply
-honest about the model's uncertainty, and under a null that is sufficient to
-dominate.
+On real market data the conformal layer delivered its guarantee to three decimal
+places, \kwCovAFive{} empirical against a nominal \num{0.95}, assuming nothing
+whatever about the model's accuracy. That is what a distribution-free guarantee is
+for. Its practical consequence here is uncomfortable and instructive. The model
+has no edge, so its prediction sets are almost never singletons, so the abstention
+gate declines every name and holds \kwGateNamesHeld{} positions. The gated book
+returns nothing. Returning nothing was the best outcome available, because the
+three ungated sizing rules all lost money. There is nothing clever in this. The
+gate is simply honest about the model's uncertainty, and under a null that turns
+out to be enough to win.
 
 \paragraph{Why the architecture is deliberately small.}
 Every component here is individually standard. The contribution is not novelty
@@ -1909,31 +1908,32 @@ built a deliberately compact cross-modal model, a guarded calibration
 procedure, a conformal abstention rule with distribution-free coverage, and an
 evaluation protocol whose controls we verified rather than asserted.
 
-That protocol then returned a null. On \kwTickerDays{} ticker-days across
+That protocol then returned a null. Across \kwTickerDays{} ticker-days spanning
 \kwYearStart--\kwYearEnd{}, no model we tested produced a positive rank
 information coefficient that survived a Newey--West standard error, and none
-cleared realistic trading costs. We report it because a protocol that can only
-be published when it finds something is not a protocol. Three defects in our
-own pipeline were caught on the way there, each of which would have produced a
-publishable-looking number: an execution-lag leak worth an apparent rank IC of
-\num{0.108} on data constructed to contain no signal at all, an unguarded
-post-hoc calibration step that improved validation calibration while degrading
-held-out calibration by an order of magnitude, and a sizing rule that saturated
-every position at its cap because it sized the level of the conditional mean
-instead of its cross-sectional deviation. None of the three was exotic. All
-three were invisible to a train/test splitter, and the first two were invisible
-to any amount of staring at the code.
+cleared realistic trading costs. We report it because a protocol that can only be
+published when it finds something is not a protocol.
 
-The decision layer is the part of the design that we would defend on this
-evidence. Conformal coverage held to three decimal places on real market data
-without assuming anything about the model's accuracy, and the abstention gate
-built on it declined every name --- which, against three ungated sizing rules
-that all lost money, was the best available outcome. That is not a flattering
-result and it is not meant to be. It is the concrete form of the paper's
-argument: a probability is only worth acting on to the extent it is calibrated,
-and a system that knows the difference will decline to bet rather than bet
-badly. We would rather publish a protocol that says nothing when there is
-nothing to say than one that has never been given the chance to.
+Three defects in our own pipeline were caught along the way, and each would have
+yielded a publishable-looking number. An execution-lag leak worth an apparent rank
+IC of \num{0.108} on data constructed to contain no signal at all. An unguarded
+post-hoc calibration step that improved validation calibration while degrading
+held-out calibration by an order of magnitude. A sizing rule that pinned every
+position to its cap because it sized the level of the conditional mean instead of
+its cross-sectional deviation. None of the three was exotic. All three were
+invisible to a train/test splitter, and the first two survived any amount of
+staring at the code.
+
+On this evidence, the decision layer is the part of the design we would defend.
+Conformal coverage held to three decimal places on real market data without
+assuming anything about the model's accuracy, and the abstention gate built on it
+declined every name. Against three ungated sizing rules that all lost money, that
+was the best available outcome. It is not a flattering result and it is not meant
+to be. It is the concrete form of the paper's argument. A probability is worth
+acting on only so far as it is calibrated, and a system that knows the difference
+will decline to bet before it bets badly. We would rather publish a protocol that
+says nothing when there is nothing to say than one that was never given the chance
+to say it.
 
 %==============================================================================
 \appendix
