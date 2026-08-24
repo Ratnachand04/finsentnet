@@ -57,17 +57,24 @@ class Batch:
         def t(x, dtype):
             return torch.as_tensor(x, dtype=dtype, device=device)
 
-        return {
-            "price": t(self.price, torch.float32),
-            "text_embeddings": t(self.text_emb, torch.float32),
-            "text_mask": t(self.text_mask, torch.bool),
-            "lag_hours": t(self.lag_hours, torch.float32),
-            "source_ids": t(self.source_ids, torch.long),
-            "y_dir": t(self.y_dir, torch.long),
-            "y_ret": t(self.y_ret, torch.float32),
-            "weights": t(self.weights, torch.float32),
-            "group_ids": t(self.group_ids, torch.long),
+        out = {
+            "price": t(np.ascontiguousarray(self.price), torch.float32),
+            "y_dir": t(np.ascontiguousarray(self.y_dir), torch.long),
+            "y_ret": t(np.ascontiguousarray(self.y_ret), torch.float32),
+            "weights": t(np.ascontiguousarray(self.weights), torch.float32),
+            "group_ids": t(np.ascontiguousarray(self.group_ids), torch.long),
         }
+        # Text tensors are only materialised when the batch actually carries text.
+        # With no corpus attached, a (B, K, 768) block of zeros is 88 MB at B = 3595:
+        # allocating and copying it to the device every optimiser step cost 4.9 s per
+        # step in profiling, against 5 ms of real compute. Absent text, there is
+        # nothing to send.
+        if self.text_emb.size:
+            out["text_embeddings"] = t(np.ascontiguousarray(self.text_emb), torch.float32)
+            out["text_mask"] = t(np.ascontiguousarray(self.text_mask), torch.bool)
+            out["lag_hours"] = t(np.ascontiguousarray(self.lag_hours), torch.float32)
+            out["source_ids"] = t(np.ascontiguousarray(self.source_ids), torch.long)
+        return out
 
 
 @dataclass
@@ -184,6 +191,27 @@ class PanelDataset:
         w = self._panel[lo : date_pos + 1, ticker_pos, :]
         return np.nan_to_num(w, nan=0.0, posinf=0.0, neginf=0.0)
 
+    def windows(self, date_pos: np.ndarray, ticker_pos: np.ndarray) -> np.ndarray:
+        """Vectorised batch of causal ``(B, L, F)`` windows.
+
+        Slicing one window per row in a Python loop is the single largest cost in the
+        training loop: a date-batch here is the whole cross-section on several dates,
+        so a batch of 24 dates at 139 names is 3,336 individual slices rebuilt every
+        optimiser step. Gathering them with one fancy-index operation instead moves the
+        work into NumPy and leaves the GPU, rather than the interpreter, as the
+        bottleneck.
+
+        The gather is backward-only by construction: row ``i`` reads offsets
+        ``[-L+1, 0]`` relative to its own ``date_pos``, so no future bar can enter.
+        """
+        dp = np.asarray(date_pos, dtype=np.int64)
+        tp = np.asarray(ticker_pos, dtype=np.int64)
+        offsets = np.arange(-self.lookback + 1, 1, dtype=np.int64)
+        rows = dp[:, None] + offsets[None, :]              # (B, L)
+        np.clip(rows, 0, self._panel.shape[0] - 1, out=rows)
+        out = self._panel[rows, tp[:, None], :]            # (B, L, F)
+        return np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0).astype(np.float32)
+
     def sample(self, row: int) -> Sample:
         r = self.index.iloc[row]
         return Sample(
@@ -196,12 +224,25 @@ class PanelDataset:
         )
 
     # -- batching --------------------------------------------------------------------
+    @property
+    def has_text(self) -> bool:
+        """True when any cached headline embeddings have been attached."""
+        return bool(self._emb)
+
     def _empty_text(self, n: int) -> tuple[np.ndarray, ...]:
+        """Placeholder text arrays.
+
+        When no embeddings are attached the placeholders are genuinely empty rather
+        than a ``(n, K, E)`` block of zeros, which at realistic date-batch sizes is
+        tens of megabytes allocated and copied per step for no purpose.
+        """
+        k = self.max_headlines if self.has_text else 0
+        e = self.embedding_dim if self.has_text else 0
         return (
-            np.zeros((n, self.max_headlines, self.embedding_dim), np.float32),
-            np.zeros((n, self.max_headlines), bool),
-            np.zeros((n, self.max_headlines), np.float32),
-            np.zeros((n, self.max_headlines), np.int64),
+            np.zeros((n, k, e), np.float32),
+            np.zeros((n, k), bool),
+            np.zeros((n, k), np.float32),
+            np.zeros((n, k), np.int64),
         )
 
     def build_batch(self, rows: Sequence[int]) -> Batch:
@@ -209,12 +250,10 @@ class PanelDataset:
         sub = self.index.iloc[rows]
         n = len(sub)
 
-        price = np.stack(
-            [
-                self.window(int(dp), int(tp))
-                for dp, tp in zip(sub["date_pos"], sub["ticker_pos"])
-            ]
-        ).astype(np.float32)
+        price = self.windows(
+            sub["date_pos"].to_numpy(dtype=np.int64),
+            sub["ticker_pos"].to_numpy(dtype=np.int64),
+        )
 
         emb, mask, lag, src = self._empty_text(n)
         if self._emb:
