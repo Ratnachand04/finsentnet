@@ -40,6 +40,32 @@
 \newcommand{\num}[1]{#1}
 
 %------------------------------------------------------------------ switches --
+% ---------------------------------------------------------------------------
+% Numbers quoted in running text are generated, not typed. experiments/03_make_paper.py
+% writes tables/keynumbers.tex; the fallbacks below are deliberately ugly so that a
+% missing or stale file is impossible to overlook in a compiled PDF.
+\providecommand{\kwNames}{\textbf{??}}
+\providecommand{\kwTickerDays}{\textbf{??}}
+\providecommand{\kwSessions}{\textbf{??}}
+\providecommand{\kwYearStart}{\textbf{??}}
+\providecommand{\kwYearEnd}{\textbf{??}}
+\providecommand{\kwESSFactor}{\textbf{??}}
+\providecommand{\kwPrimaryIC}{\textbf{??}}
+\providecommand{\kwPrimaryICt}{\textbf{??}}
+\providecommand{\kwCovAFive}{\textbf{??}}
+\providecommand{\kwCovAFiveSet}{\textbf{??}}
+\providecommand{\kwCovAFiveSingle}{\textbf{??}}
+\providecommand{\kwCovATen}{\textbf{??}}
+\providecommand{\kwCovATenSet}{\textbf{??}}
+\providecommand{\kwCovATenSingle}{\textbf{??}}
+\providecommand{\kwCovATwenty}{\textbf{??}}
+\providecommand{\kwCovATwentySet}{\textbf{??}}
+\providecommand{\kwCovATwentySingle}{\textbf{??}}
+\providecommand{\kwUngatedSharpe}{\textbf{??}}
+\providecommand{\kwGateNamesHeld}{\textbf{??}}
+\providecommand{\kwGateAlpha}{\textbf{??}}
+\IfFileExists{tables/keynumbers.tex}{\input{tables/keynumbers.tex}}{}
+
 \newif\ifresultsready
 \resultsreadyfalse          % <--- set to \resultsreadytrue after the sweep
 
@@ -83,9 +109,9 @@
 \newcommand{\Neutral}{\textsc{neutral}}
 \newcommand{\Up}{\textsc{up}}
 
-\title{\bfseries Calibration-Aware Cross-Modal Learning for Equity
-Direction:\\[2pt] Gated News--Price Fusion, Conformal Abstention,\\
-and Growth-Optimal Position Sizing}
+\title{\bfseries Calibration Is the Binding Constraint on Position
+Sizing:\\[2pt] Growth-Optimal Decisions, Conformal Abstention, and an\\
+Honest Walk-Forward Protocol for Equity Direction}
 
 \author{%
   \textit{Author One}\thanks{Corresponding author. Replace this block before
@@ -130,14 +156,21 @@ driftless data while remaining invisible to any train/test splitter, and a
 regime in which unguarded post-hoc calibration reduces validation calibration
 error from \num{0.020} to \num{0.004} while \emph{raising} held-out error from
 \num{0.003} to \num{0.056}.
-\ifresultsready
-Empirical results follow in Section~\ref{sec:results}.
-\else
-The full walk-forward study is specified in Section~\ref{sec:protocol}; its
-results are not yet reported. Section~\ref{sec:validation} reports the protocol
-validation that precedes it. Code, configurations, seeds and 207 tests are
-released.
-\fi
+On a point-in-time universe of \kwNames{} liquid US names over
+\kwYearStart--\kwYearEnd{} (\kwTickerDays{} ticker-days), the protocol returns
+a null. No model we test, including \textsc{FinSentNet-C}, produces a rank
+information coefficient distinguishable from zero (\kwPrimaryIC{},
+Newey--West $t=\kwPrimaryICt$), and none clears realistic trading costs. The
+decision layer, however, behaves exactly as the theory requires. Conformal
+coverage is empirically exact --- \kwCovAFive{} against a nominal \num{0.95}
+and \kwCovATen{} against a nominal \num{0.90} --- and precisely because a model
+without an edge cannot produce a singleton prediction set at those levels
+(mean set size \kwCovATenSet{} of three possible classes), the abstention gate
+declines every name and takes no position at all. It is the only one of the
+four sizing rules we compare that does not lose money, and it dominates by
+refusing to bet. We regard this as the paper's central empirical finding rather
+than a disappointing one: a decision layer earns its place by what it declines,
+and a protocol earns its place by being willing to return a null.
 \end{abstract}
 
 \noindent\textbf{Keywords:} probability calibration; conformal prediction;
