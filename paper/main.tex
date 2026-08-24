@@ -1462,10 +1462,51 @@ expect the calibration results to be sharper than the alpha results. That is
 not a weakness of the experiment; it is the point of the paper.
 
 \paragraph{On negative results.}
-We commit in advance to reporting the headline-shuffle test, the generative
-augmentation ablation and the candlestick ablation whichever way they fall. A
+We committed in advance to reporting every pre-specified test whichever way it
+fell, and this section is what that commitment cost. The headline-shuffle null
+test and the conditional high-news-flow ablation cannot be run at all, because
+the corpus that would support them does not exist in usable form; we report
+them as unavailable rather than substituting a proxy that would have been
+easier to write and impossible to check. The architecture ablations are
+withheld for a different and stronger reason, given in
+Table~\ref{tab:T7_main}: the unablated model's rank information coefficient is
+\kwPrimaryIC{} with a Newey--West $t$ of \kwPrimaryICt{}, so the difference
+between any two ablations of it is the difference between two noise terms. A
 table in which every component helps is the signature of a design tuned on its
-own evaluation, and referees are right to read it that way.
+own evaluation, and referees are right to read it that way. A table in which
+every component helps by an amount smaller than its own standard error is
+worse, because it looks like evidence.
+
+\paragraph{What a null result does and does not establish.}
+We did not find a tradeable edge, and we want to be precise about the scope of
+that statement. It is a claim about six models, one universe of \kwNames{}
+liquid US names, one horizon of five sessions, and one decade. It is not a
+claim that short-horizon cross-sectional prediction is impossible, and it is
+certainly not a claim that news carries no information about returns --- we
+were unable to test that second proposition at all. What the null does
+establish is narrower and, we think, more useful: that a protocol built to
+resist its own optimism will return nothing when there is nothing there. Every
+component of this pipeline had the opportunity to manufacture a result. The
+execution-lag defect of Section~\ref{sec:validation} was worth an apparent rank
+IC of \num{0.108} on driftless data, more than an order of magnitude above any
+signal we actually measure. Unguarded post-hoc calibration was worth a tenfold apparent
+improvement in calibration error while degrading it out of sample. Sizing on an
+uncentred conditional mean silently saturated every position at the cap. Each
+of these was caught by a control that was verified rather than asserted, and
+each would have produced a publishable-looking number had it not been.
+
+\paragraph{The decision layer is the part that worked.}
+The conformal layer delivered its guarantee to three decimal places on real
+market data --- \kwCovAFive{} empirical against a nominal \num{0.95}
+--- without assuming anything about the model's accuracy, which is exactly what
+a distribution-free guarantee is for. Its practical consequence here is
+uncomfortable and instructive. Because the model has no edge, its prediction
+sets are almost never singletons, so the abstention gate declines every name
+and holds \kwGateNamesHeld{} positions. The gated book therefore returns
+nothing, and returning nothing is the best outcome available: the three
+ungated sizing rules all lose money. The gate is not clever. It is simply
+honest about the model's uncertainty, and under a null that is sufficient to
+dominate.
 
 \paragraph{Why the architecture is deliberately small.}
 Every component here is individually standard. The contribution is not novelty
