@@ -306,3 +306,43 @@ def test_windows_never_reach_forward():
     after = ds2.windows(np.array([150]), np.array([0]))
 
     assert np.array_equal(base, after), "a window ending at t changed when t+1 changed"
+
+
+def test_batch_row_slicing_partitions_without_loss():
+    """Row-capped sub-batches must reconstruct the batch exactly.
+
+    A date-batch is sized in dates, but universe size varies across the panel, so a
+    fixed date count gives a variable row count and a variable activation footprint.
+    Capping by rows is what keeps a training step inside a memory budget, and it is
+    only sound if the partition is exact.
+    """
+    from finsent.data.panel import PanelDataset
+    from finsent.data.features_causal import FEATURE_NAMES
+
+    rng = np.random.default_rng(3)
+    dates = pd.bdate_range("2020-01-01", periods=120)
+    tickers = [f"T{i}" for i in range(11)]
+    feats = pd.concat([
+        pd.DataFrame({"date": dates, "ticker": t,
+                      **{f: rng.standard_normal(len(dates)) for f in FEATURE_NAMES}})
+        for t in tickers
+    ], ignore_index=True)
+    labs = feats[["date", "ticker"]].copy()
+    labs["y_dir"] = rng.integers(0, 3, len(labs))
+    labs["y_ret"] = rng.standard_normal(len(labs)) * 0.01
+    labs["weight"] = 1.0
+
+    ds = PanelDataset(feats, labs, lookback=30)
+    batch = next(iter(ds.iter_date_batches(8, shuffle=False)))
+    assert len(batch) > 7, "need a batch big enough to split"
+
+    chunks = list(batch.row_chunks(7))
+    assert len(chunks) > 1, "the cap did not split anything"
+    assert sum(len(c) for c in chunks) == len(batch), "rows were lost or duplicated"
+    assert np.array_equal(np.concatenate([c.price for c in chunks]), batch.price)
+    assert np.array_equal(np.concatenate([c.y_dir for c in chunks]), batch.y_dir)
+    assert np.array_equal(np.concatenate([c.tickers for c in chunks]), batch.tickers)
+
+    # A cap at or above the batch size must hand back the batch itself, not a copy.
+    assert list(batch.row_chunks(len(batch)))[0] is batch
+    assert list(batch.row_chunks(0))[0] is batch
