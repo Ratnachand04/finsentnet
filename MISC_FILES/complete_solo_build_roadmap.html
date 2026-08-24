@@ -244,7 +244,7 @@ function render(){
   document.getElementById('btn-next').disabled = current===phases.length-1;
 
   const tasks = p.tasks.map(t=>`
-    <div class="task-card" onclick="sendPrompt('Give me complete implementation details for: ${t.title} in the quant system build plan')">
+    <div class="task-card">
       <div class="tc-week">${t.week}</div>
       <div class="tc-title">${t.title}</div>
       <div class="tc-body">${t.body}</div>
