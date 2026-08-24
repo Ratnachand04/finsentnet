@@ -32,6 +32,7 @@ help:
 	@echo "study             walk-forward every model over that panel (hours)"
 	@echo "tables            emit paper/tables and paper/figures from the run"
 	@echo "paper             dataset + study + tables"
+	@echo "bundle            self-contained folder + zip for Overleaf"
 	@echo "reproduce         clean-tree check + tests + paper"
 	@echo ""
 	@echo "check-clean-tree  refuse to publish numbers from a dirty working tree"
@@ -74,10 +75,22 @@ tables:
 	$(PY) experiments/03_make_paper.py --study-panel $(PANEL)
 	$(PY) $(OUT)/check_tex.py $(OUT)/main.tex
 
+# Everything Overleaf needs in one folder: the manuscript, the generated tables it
+# inputs, and the figures it includes. Only *_main artifacts are copied -- the skeleton
+# tables are synthetic and must never travel next to real results.
+bundle: check-clean-tree tables
+	rm -rf $(OUT)/overleaf_bundle $(OUT)/finsentnet_overleaf.zip
+	mkdir -p $(OUT)/overleaf_bundle/tables $(OUT)/overleaf_bundle/figures
+	cp $(OUT)/main.tex $(OUT)/overleaf_bundle/
+	cp $(OUT)/tables/*_main.tex $(OUT)/tables/keynumbers.tex $(OUT)/overleaf_bundle/tables/
+	cp $(OUT)/figures/F5_main.pdf $(OUT)/figures/F6_main.pdf $(OUT)/figures/F7_main.pdf $(OUT)/figures/F9_main.pdf $(OUT)/overleaf_bundle/figures/
+	$(PY) -c "import shutil; shutil.make_archive('$(OUT)/finsentnet_overleaf','zip','$(OUT)/overleaf_bundle')"
+	@echo "Upload $(OUT)/finsentnet_overleaf.zip to Overleaf; main.tex is the root."
+
 paper: dataset study tables
 	@echo ""
 	@echo "Tables and figures written to $(OUT)/tables and $(OUT)/figures."
-	@echo "Set \\resultsreadytrue in $(OUT)/main.tex to compile with them."
+	@echo "main.tex already has \resultsreadytrue; run make bundle to package for Overleaf."
 
 # A dirty tree means the recorded git sha does not describe the code that produced the
 # numbers, so the artifact is not reproducible. Fail loudly rather than stamp a lie.
