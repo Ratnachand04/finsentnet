@@ -304,7 +304,17 @@ def main() -> int:
             g["y_true"].to_numpy(), probs(g).argmax(1))["macro_f1"])
         maj = M.classification_metrics(panel["y_true"].to_numpy(),
                                        probs(panel).argmax(1))["majority_baseline"]
-        ic_full = M.information_coefficient(panel["score"], panel["fwd_ret"], panel["date"])
+        # One IC per date, averaged across seeds. Pooling the seeds instead -- which is
+        # what this did -- puts three predictions of the same ticker into one
+        # cross-section and correlates them against a triplicated return. That is a
+        # different statistic from the one the Rank IC column reports, and the
+        # Newey-West t was being computed on it: the table showed +0.0111 beside a t
+        # derived from +0.0074. Averaging first makes the column and its t-statistic
+        # describe the same series.
+        by_seed = [M.information_coefficient(g["score"], g["fwd_ret"], g["date"])
+                   for _, g in panel.groupby("seed")]
+        ic_full = (pd.concat(by_seed, axis=1).mean(axis=1).dropna()
+                   if by_seed else pd.Series(dtype=float))
         summ = M.ic_summary(ic_full, ppy, cfg.eval.hac_lags)
         ic_series[name] = ic_full
         rows.append({
