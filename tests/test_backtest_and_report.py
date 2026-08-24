@@ -196,3 +196,49 @@ def test_economic_table_declares_the_trial_budget(cfg, tmp_path: Path):
     assert (t6["n_trials_declared"] == cfg.eval.n_configs_evaluated).all()
     assert "deflated_sharpe" in t6.columns and "dsr_verdict" in t6.columns
     assert set(t6["cost_bps"]) == set(cfg.decision.sweep_bps)
+
+
+def test_kelly_sizes_the_demeaned_edge_not_the_level():
+    """A dollar-neutral book must size relative edge, or it collapses to nothing.
+
+    Regression test for a real failure: when every ``mu_hat`` shares a positive
+    common component -- which happens whenever the label distribution drifts up --
+    every Kelly fraction saturates at ``+f_max`` and demeaning the *weights*
+    afterwards drives the whole book to exactly zero. Demeaning the *edge* first
+    preserves the cross-sectional information the book can actually trade.
+    """
+    dates = pd.bdate_range("2022-01-03", periods=20)
+    tickers = [f"T{i:02d}" for i in range(30)]
+    rng = np.random.default_rng(0)
+
+    rows = []
+    for d in dates:
+        # Large common drift plus a small genuine cross-sectional spread.
+        edge = 0.02 + 0.001 * rng.standard_normal(len(tickers))
+        rows.append(pd.DataFrame({
+            "date": d, "ticker": tickers, "score": edge, "mu_hat": edge,
+            # sigma2 chosen so the Kelly fractions stay below the cap: this test is
+            # about proportionality, and a saturated book would only ever show the
+            # sign pattern (corr -> sqrt(2/pi) ~ 0.80).
+            "sigma2": np.full(len(tickers), 1e-2), "tradeable": True,
+        }))
+    signals = pd.concat(rows, ignore_index=True)
+
+    rule = TradingRule(scheme="kelly", rebalance_days=1, gate_on_singleton=False,
+                       dollar_neutral=True, kappa=0.25, f_max=0.10)
+    w = build_weights(signals, rule)
+
+    assert np.allclose(w.sum(axis=1), 0.0, atol=1e-9), "book must stay dollar neutral"
+    gross = w.abs().sum(axis=1)
+    assert (gross > 1e-6).all(), (
+        "the book collapsed to zero: the common component of mu is being sized before "
+        "it is removed"
+    )
+    # And the surviving weights must track the relative edge, not the level.
+    first = signals[signals["date"] == dates[0]]
+    corr = np.corrcoef(w.loc[dates[0], first["ticker"]].to_numpy(),
+                       first["score"].to_numpy())[0, 1]
+    assert corr > 0.95, f"weights should follow the relative edge; corr={corr:.3f}"
+    assert (w.loc[dates[0]].abs() < 0.10 - 1e-9).any(), (
+        "fixture saturated; it is no longer testing proportionality"
+    )
