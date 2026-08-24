@@ -1341,6 +1341,39 @@ guarantee is distribution-free and holds without any assumption that the model
 is correct --- which, at this signal level, is a considerably more useful thing
 to be able to promise than accuracy.
 
+\subsection{The contract holds on the real panel, not only on fixtures}
+\label{sec:validation:real}
+
+Every check above runs on synthetic data whose ground truth we control, which
+is the right way to test machinery and the wrong way to test a dataset. A
+lag applied in the wrong direction, a label joined to the wrong session or a
+traded return that begins a day early are defects in the panel rather than in
+the code that manipulates it, and a fixture cannot see them. We therefore
+assert the timestamp contract directly against the built panel.
+
+Two quantities pin it down. The trailing one-session return feature carried at
+date $t$ has a cross-sectional rank correlation of \num{0.92} with the session
+that \emph{ended} at $t-1$, and \num{0.00} with the session ending at $t$ ---
+so the feature lag is exactly one session, which is worth stating in both
+directions. A lag of zero would leak, in the manner quantified in
+Section~\ref{sec:validation}. A lag of two would not leak but would silently
+discard a day of information, and would look like a weak model rather than like
+a defect, which is the harder failure to notice. Separately, the return the
+backtester accrues at $t$ agrees with $\text{open}(t{+}1)/\text{open}(t)-1$ to
+within $10^{-9}$, so the position taken at the open of $t$ earns the move that
+begins at the open of $t$.
+
+We also sweep every feature column for an implausibly large rank information
+coefficient against the return it is used to predict, with the audit threshold
+of \num{0.06} fixed in advance. At daily frequency on liquid US equities a
+single-feature rank IC above that level is a timestamp defect until proven
+otherwise, and treating it as a discovery is how leakage is published. No
+column reaches it. These three assertions are tests in the released suite
+rather than statements in a paper, and they skip rather than pass when the
+panel is absent, so they cannot quietly become vacuous.
+
+%==============================================================================
+
 \subsection{End-to-end recovery on a planted signal}
 \label{sec:recovery}
 Running the complete protocol --- point-in-time universe, causal features,
