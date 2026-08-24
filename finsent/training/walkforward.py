@@ -154,12 +154,27 @@ def run_walk_forward(
             raw_test = softmax(pred.logits_test, axis=1)
             raw_probs.append(raw_test)
 
-            # (3) conformal quantile, fitted on the same inner-validation block.
-            alpha = cfg.conformal.alphas[min(1, len(cfg.conformal.alphas) - 1)]
-            conformal = SplitConformal(
-                alpha=alpha, score=cfg.conformal.score, seed=seed
-            ).fit(probs_val, pred.y_val)
-            tradeable = conformal.singleton_mask(probs_test)
+            # (3) conformal quantiles, fitted on the same inner-validation block. Every
+            # alpha in the grid is fitted here and its singleton mask is carried into the
+            # prediction record, so the abstention gate can be re-examined at any alpha
+            # at report time without refitting a calibrator or retraining a model. The
+            # primary alpha -- the one that fills the plain ``tradeable`` column, and so
+            # the one the headline trading rule uses -- stays the second entry of the
+            # grid, exactly as before.
+            primary_alpha = cfg.conformal.alphas[min(1, len(cfg.conformal.alphas) - 1)]
+            gates: dict[str, np.ndarray] = {}
+            tradeable = None
+            for a in cfg.conformal.alphas:
+                predictor = SplitConformal(alpha=a, score=cfg.conformal.score, seed=seed)
+                predictor.fit(probs_val, pred.y_val)
+                mask = predictor.singleton_mask(probs_test)
+                gates[f"tradeable_a{int(round(a * 100)):02d}"] = mask
+                cov_rows.append({"fold": fold.index, "seed": seed,
+                                 **predictor.evaluate(probs_test, pred.y_test)})
+                if a == primary_alpha:
+                    tradeable = mask
+            if tradeable is None:  # a grid that somehow omits its own primary entry
+                tradeable = np.zeros(len(probs_test), dtype=bool)
 
             rows.append(
                 pd.DataFrame(
@@ -180,6 +195,7 @@ def run_walk_forward(
                         "y_true": pred.y_test,
                         "fwd_ret": pred.fwd_ret_test,
                         "tradeable": tradeable,
+                        **gates,
                         "gate_mean": pred.gate_test
                         if pred.gate_test is not None
                         else np.nan,
@@ -227,11 +243,6 @@ def run_walk_forward(
                 }
             )
 
-            for a in cfg.conformal.alphas:
-                predictor = SplitConformal(alpha=a, score=cfg.conformal.score, seed=seed)
-                predictor.fit(probs_val, pred.y_val)
-                cov_rows.append({"fold": fold.index, "seed": seed,
-                                 **predictor.evaluate(probs_test, pred.y_test)})
 
     panel = (
         pd.concat(rows, ignore_index=True)
