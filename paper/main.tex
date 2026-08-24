@@ -51,6 +51,8 @@
 \providecommand{\kwYearEnd}{\textbf{??}}
 \providecommand{\kwESSFactor}{\textbf{??}}
 \providecommand{\kwTests}{\textbf{??}}
+\providecommand{\kwFolds}{\textbf{??}}
+\providecommand{\kwSeeds}{\textbf{??}}
 \providecommand{\kwPrimaryIC}{\textbf{??}}
 \providecommand{\kwPrimaryICt}{\textbf{??}}
 \providecommand{\kwCovAFive}{\textbf{??}}
@@ -1112,7 +1114,8 @@ months, purge equal to $h$, embargo 1\% of the sample. Combinatorially purged
 cross-validation is used for the robustness section only.
 
 \paragraph{Seeds and trial budget.}
-Five seeds for headline rows, three for ablations. The total number of
+\kwSeeds{} seeds for every headline row, across \kwFolds{} walk-forward
+folds. The total number of
 evaluated configurations is counted and \emph{declared}, and feeds both the
 Deflated Sharpe Ratio and the Probability of Backtest Overfitting. Declaring it
 is what distinguishes a selection procedure from data mining.
