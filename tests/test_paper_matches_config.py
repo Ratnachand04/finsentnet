@@ -99,3 +99,64 @@ def test_receptive_field_claim_is_arithmetically_true(appendix):
     assert claimed > lookback, (
         f"receptive field {claimed} does not cover the {lookback}-session window"
     )
+
+
+def test_every_quoted_parameter_count_matches_the_configuration():
+    """The manuscript states the trainable-parameter total in four separate places.
+
+    It is a static architectural fact, not a run output, so it stays typed in the prose
+    and is guarded here instead of being turned into a generated macro. Four copies of a
+    number is three opportunities for one of them to go stale.
+    """
+    text = PAPER.read_text(encoding="utf-8")
+    expected = load_config().model.expected_trainable
+
+    quoted = re.findall(r"\\num\{(\d{1,3})\{,\}(\d{3})\}", text)
+    totals = [int(a + b) for a, b in quoted]
+    assert totals, "the manuscript no longer quotes a parameter total"
+
+    assert totals.count(expected) >= 4, (
+        f"expected the parameter total {expected} in at least four places, found "
+        f"{totals.count(expected)}"
+    )
+    # A near miss is the failure mode that matters: 448,543 for 448,453 reads as correct
+    # and is not. Other quoted numbers (the effective sample size, for one) are free to
+    # differ, so only flag values close enough to be a corrupted copy of this one.
+    near_misses = [t for t in set(totals)
+                   if t != expected and abs(t - expected) < 0.02 * expected]
+    assert not near_misses, (
+        f"the manuscript quotes {near_misses}, which look like stale copies of {expected}"
+    )
+
+
+def test_the_split_protocol_matches_the_configuration():
+    """The Splits paragraph is prose, and prose does not recompile when a split changes."""
+    text = " ".join(PAPER.read_text(encoding="utf-8").split())
+    start = text.index("Purged, embargoed walk-forward")
+    para = text[start:text.index("Combinatorially purged", start)]
+    d = load_config().data
+
+    years = re.search(r"expanding training window of at least (\w+) years", para)
+    assert years, "the training-window minimum is no longer stated"
+    words = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+             "six": 6, "nine": 9, "twelve": 12}
+    assert words.get(years.group(1).lower()) == d.train_min_years
+
+    months = re.search(r"(\w+)-month inner-validation and test blocks", para)
+    assert months, "the block lengths are no longer stated"
+    assert words.get(months.group(1).lower()) == d.inner_val_months == d.test_months
+
+    refit = re.search(r"refitted every (\w+) months", para)
+    assert refit and words.get(refit.group(1).lower()) == d.refit_every_months
+
+    # The purge is stated as "equal to h" rather than as a number, so check the identity
+    # the sentence asserts rather than a literal.
+    assert "purge equal to $h$" in para, "the purge is no longer tied to the horizon"
+    assert d.purge_days == d.horizon_h, (
+        f"the paper says purge equals h, but the configuration has purge={d.purge_days} "
+        f"and h={d.horizon_h}"
+    )
+
+    embargo = re.search(r"embargo ([\d.]+)\\% of the sample", para)
+    assert embargo, "the embargo is no longer stated"
+    assert float(embargo.group(1)) / 100.0 == pytest.approx(d.embargo_pct)
