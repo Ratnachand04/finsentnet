@@ -346,3 +346,77 @@ def test_batch_row_slicing_partitions_without_loss():
     # A cap at or above the batch size must hand back the batch itself, not a copy.
     assert list(batch.row_chunks(len(batch)))[0] is batch
     assert list(batch.row_chunks(0))[0] is batch
+
+
+def test_group_chunks_never_splits_a_date():
+    """The row cap must not cut a cross-section in half.
+
+    The ranking term is computed within a date. A date split across two optimiser
+    steps would be ranked against a fraction of its own universe, which is an easier
+    problem than the one the paper reports, so the cap has to cut on date boundaries.
+    """
+    from finsent.data.panel import PanelDataset
+    from finsent.data.features_causal import FEATURE_NAMES
+
+    rng = np.random.default_rng(11)
+    dates = pd.bdate_range("2020-01-01", periods=90)
+    tickers = [f"T{i}" for i in range(13)]
+    feats = pd.concat([
+        pd.DataFrame({"date": dates, "ticker": t,
+                      **{f: rng.standard_normal(len(dates)) for f in FEATURE_NAMES}})
+        for t in tickers
+    ], ignore_index=True)
+    labs = feats[["date", "ticker"]].copy()
+    labs["y_dir"] = rng.integers(0, 3, len(labs))
+    labs["y_ret"] = rng.standard_normal(len(labs)) * 0.01
+    labs["weight"] = 1.0
+
+    ds = PanelDataset(feats, labs, lookback=30)
+    batch = next(iter(ds.iter_date_batches(10, shuffle=False)))
+
+    chunks = list(batch.group_chunks(40))
+    assert len(chunks) > 1, "the cap did not split anything"
+    assert sum(len(c) for c in chunks) == len(batch), "rows were lost or duplicated"
+    assert np.array_equal(np.concatenate([c.price for c in chunks]), batch.price)
+
+    # No date may appear in more than one chunk.
+    seen = {}
+    for i, c in enumerate(chunks):
+        for g in np.unique(c.group_ids):
+            assert g not in seen, f"date group {g} split across chunks {seen[g]} and {i}"
+            seen[g] = i
+
+    # Every chunk holds each of its dates in full.
+    full = {g: int((batch.group_ids == g).sum()) for g in np.unique(batch.group_ids)}
+    for c in chunks:
+        for g in np.unique(c.group_ids):
+            assert int((c.group_ids == g).sum()) == full[g], "a date was truncated"
+
+
+def test_group_chunks_yields_an_oversized_date_whole():
+    """A single date larger than the cap is better whole than halved."""
+    from finsent.data.panel import PanelDataset
+    from finsent.data.features_causal import FEATURE_NAMES
+
+    rng = np.random.default_rng(12)
+    dates = pd.bdate_range("2020-01-01", periods=60)
+    tickers = [f"T{i}" for i in range(20)]
+    feats = pd.concat([
+        pd.DataFrame({"date": dates, "ticker": t,
+                      **{f: rng.standard_normal(len(dates)) for f in FEATURE_NAMES}})
+        for t in tickers
+    ], ignore_index=True)
+    labs = feats[["date", "ticker"]].copy()
+    labs["y_dir"] = 1
+    labs["y_ret"] = 0.0
+    labs["weight"] = 1.0
+
+    ds = PanelDataset(feats, labs, lookback=20)
+    batch = next(iter(ds.iter_date_batches(3, shuffle=False)))
+    per_date = int((batch.group_ids == batch.group_ids[0]).sum())
+
+    chunks = list(batch.group_chunks(per_date - 1))   # cap below one date's width
+    assert sum(len(c) for c in chunks) == len(batch)
+    for c in chunks:
+        assert len(np.unique(c.group_ids)) == 1, "an oversized date was merged, not isolated"
+        assert len(c) == per_date, "an oversized date was split"
