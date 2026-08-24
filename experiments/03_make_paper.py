@@ -338,12 +338,26 @@ def main() -> int:
     if cov_files:
         cov = pd.concat([pd.read_csv(f).assign(model=f.stem.replace("_coverage", ""))
                          for f in cov_files], ignore_index=True)
-        cov_t = (cov[cov["model"] == PRIMARY]
-                 .groupby("alpha")[["nominal_coverage", "empirical_coverage",
-                                    "mean_set_size", "singleton_rate"]]
-                 .mean().reset_index())
+        if "variant" not in cov.columns:      # panels written before both were recorded
+            cov["variant"] = "split"
+        prim_cov = cov[cov["model"] == PRIMARY]
+        cols = ["nominal_coverage", "empirical_coverage", "mean_set_size", "singleton_rate"]
+
+        # The split variant drives the figure and the quoted macros, since it is the one
+        # the abstention gate keys on.
+        cov_t = (prim_cov[prim_cov["variant"] == "split"]
+                 .groupby("alpha")[cols].mean().reset_index())
         cov_t.columns = ["alpha", "Nominal", "Empirical", "Mean set size", "Singleton rate"]
-        write_table("T4b_main", cov_t,
+
+        # The table reports both, because Section 6.2 promises both and the comparison is
+        # the point: only the online variant holds coverage when exchangeability fails.
+        cov_both = (prim_cov.groupby(["variant", "alpha"])[cols].mean().reset_index())
+        cov_both["variant"] = cov_both["variant"].map(
+            {"split": "Split", "adaptive": "Adaptive (online)"}).fillna(cov_both["variant"])
+        cov_both.columns = ["Variant", "alpha", "Nominal", "Empirical",
+                            "Mean set size", "Singleton rate"]
+        cov_both = cov_both.sort_values(["Variant", "alpha"])
+        write_table("T4b_main", cov_both,
                     "Conformal coverage on the test blocks, randomised adaptive prediction "
                     "sets fitted per fold on inner-validation.", prov,
                     note="Coverage is a distribution-free guarantee; it does not assume the "
