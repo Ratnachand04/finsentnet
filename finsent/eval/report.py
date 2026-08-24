@@ -121,7 +121,10 @@ class ReportBuilder:
     def _write_table(self, tid: str, df: pd.DataFrame, caption: str) -> None:
         stem = self.out_dir / "tables" / f"{tid}_{self.label}"
         df.to_csv(stem.with_suffix(".csv"), index=False)
-        body = df.to_latex(index=False, float_format=lambda v: f"{v:.4f}", escape=True)
+        # na_rep, not float_format: pandas does not consult float_format for
+        # missing values, so a NaN renders as the literal string "NaN".
+        body = df.to_latex(index=False, escape=True, na_rep="---",
+                           float_format=lambda v: f"{v:.4f}")
         note = self.provenance.footnote()
         tex = (
             f"% {tid}: {caption}\n"
