@@ -1080,15 +1080,30 @@ rather than selected after the fact.
 This section is written before the results and is not revised in light of them.
 
 \paragraph{Data.}
-A point-in-time liquidity-screened universe of $N$ US equities over
-2016--2025, with delisting returns included. Headlines come from a public,
-citable corpus with first-print timestamps \citep{dong2024fnspid}, so that
-reviewers can rerun the text modality. We report coverage per ticker-day, the
-distribution of headline counts, and class balance by year
-(Table~\ref{tab:T1_main}). We do not scrape: a retrospective scrape returns
-what is currently indexed rather than what was visible, and link rot,
-last-modified timestamps and post-hoc editorial revision are contamination that
-a publication lag does not address.
+A point-in-time liquidity-screened universe of \kwNames{} US equities over
+\kwYearStart--\kwYearEnd{}, \kwTickerDays{} ticker-days across \kwSessions{}
+sessions. The screen is applied at each date using only information available
+at that date --- price above \$5 and trailing dollar volume above \$5M, ranked
+on trailing data --- and we verify that it never consults a future bar. We are
+nonetheless explicit that this removes survivorship bias one level down and not
+at the level that matters most: the pool the screen ranks is a set of companies
+for which price history exists in the present, and it does not include
+delisting returns. We had no CRSP-style database with them, and we say so here
+rather than in a footnote, because a point-in-time screen over a survivor-tilted
+pool inherits the tilt.
+
+The design called for headlines from a public, citable corpus with first-print
+timestamps \citep{dong2024fnspid}, so that reviewers could rerun the text
+modality. The corpus actually available to us does not meet that bar: of
+\num{5391} news rows, \num{72} are non-empty, and those carry \num{64} template
+titles across \num{9} distinct timestamps. We therefore report the text
+modality as not evaluated and run the model in a forced price-only state,
+rather than reporting a text result that rests on nine timestamps. We do not
+scrape as a substitute: a retrospective scrape returns what is currently
+indexed rather than what was visible, and link rot, last-modified timestamps and
+post-hoc editorial revision are contamination that a publication lag does not
+address. Table~\ref{tab:T1_main} reports the panel and states the corpus audit
+in its footnote.
 
 \paragraph{Splits.}
 Purged, embargoed walk-forward with an expanding training window of at least
