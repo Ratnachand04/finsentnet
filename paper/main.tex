@@ -72,10 +72,19 @@
 \providecommand{\kwUngatedSharpe}{\textbf{??}}
 \providecommand{\kwGateNamesHeld}{\textbf{??}}
 \providecommand{\kwGateAlpha}{\textbf{??}}
+\providecommand{\kwCovATenAdaptive}{\textbf{??}}
+\providecommand{\kwCovMeanAbsAdaptiveGap}{\textbf{??}}
+\providecommand{\kwCovMeanAbsSplitGap}{\textbf{??}}
+\providecommand{\kwCovWorstAdaptiveGap}{\textbf{??}}
+\providecommand{\kwCovWorstAlpha}{\textbf{??}}
+\providecommand{\kwCovWorstSplitGap}{\textbf{??}}
+\providecommand{\kwPrimaryAcc}{\textbf{??}}
+\providecommand{\kwPrimaryICsd}{\textbf{??}}
+\providecommand{\kwPrimaryMajority}{\textbf{??}}
 \IfFileExists{tables/keynumbers.tex}{\input{tables/keynumbers.tex}}{}
 
 \newif\ifresultsready
-\resultsreadyfalse          % <--- set to \resultsreadytrue after the sweep
+\resultsreadytrue           % the walk-forward sweep has run; tables/ is populated
 
 \newcommand{\pending}[1]{%
   \begin{center}
@@ -167,19 +176,28 @@ error from \num{0.020} to \num{0.004} while \emph{raising} held-out error from
 \num{0.003} to \num{0.056}.
 On a point-in-time universe of \kwNames{} liquid US names over
 \kwYearStart--\kwYearEnd{} (\kwTickerDays{} ticker-days), the protocol returns
-a null. No model we test, including \textsc{FinSentNet-C}, produces a
-\emph{positive} rank information coefficient distinguishable from zero (\kwPrimaryIC{},
-Newey--West $t=\kwPrimaryICt$), and none clears realistic trading costs. The
-decision layer, however, behaves exactly as the theory requires. Conformal
-coverage is empirically exact --- \kwCovAFive{} against a nominal \num{0.95}
-and \kwCovATen{} against a nominal \num{0.90} --- and precisely because a model
-without an edge cannot produce a singleton prediction set at those levels
-(mean set size \kwCovATenSet{} of three possible classes), the abstention gate
-declines every name and takes no position at all. It is the only one of the
-four sizing rules we compare that does not lose money, and it dominates by
-refusing to bet. We regard this as the paper's central empirical finding rather
-than a disappointing one: a decision layer earns its place by what it declines,
-and a protocol earns its place by being willing to return a null.
+a null. \textsc{FinSentNet-C} posts the highest rank information coefficient of
+the six models at \kwPrimaryIC{}, and it does not survive a Newey--West
+standard error ($t=\kwPrimaryICt$, seed standard deviation \kwPrimaryICsd{});
+no model clears realistic trading costs. Its three-class accuracy of
+\kwPrimaryAcc{} sits \emph{below} the majority-class baseline of
+\kwPrimaryMajority{} while its ranking is the best in the table, which is the
+paper's thesis arriving as a measurement rather than an argument.
+
+The decision layer behaves as the theory requires. Conformal coverage lands on
+nominal to three decimal places, \kwCovAFive{} against \num{0.95} and
+\kwCovATen{} against \num{0.90}, and because a model this uncertain almost
+never produces a singleton prediction set at those levels (mean set size
+\kwCovATenSet{} of three classes), the abstention gate declines every name and
+takes no position at all. It is the only one of the four sizing rules we
+compare that does not lose money, and it dominates by refusing to bet. We also
+find that the exchangeability assumption behind split conformal fails on this
+panel in a way the online update repairs: averaged across the $\alpha$ grid,
+split coverage misses nominal by \kwCovMeanAbsSplitGap{} and the adaptive
+variant by \kwCovMeanAbsAdaptiveGap{}. We regard the abstention result as the
+paper's central empirical finding rather than a disappointing one: a decision
+layer earns its place by what it declines, and a protocol earns its place by
+being willing to return a null.
 \end{abstract}
 
 \noindent\textbf{Keywords:} probability calibration; conformal prediction;
@@ -1492,16 +1510,22 @@ the same run. Nothing below is entered by hand, including the numbers in this
 prose.
 
 \paragraph{The result in one paragraph.}
-On \kwTickerDays{} ticker-days spanning \kwYearStart--\kwYearEnd{}, none of the
-six models produces a positive rank information coefficient that survives a
-Newey--West standard error, and none clears realistic trading costs. The
-proposed model reaches a rank IC of \kwPrimaryIC{} with $t=\kwPrimaryICt$. The
-conformal layer, by contrast, delivers its coverage guarantee to three decimal
-places, and the abstention gate built on top of it declines every name and
-holds \kwGateNamesHeld{} positions --- which, against an ungated book returning
-a net Sharpe of \kwUngatedSharpe{}, is the best outcome on offer. We read this
+On \kwTickerDays{} ticker-days spanning \kwYearStart--\kwYearEnd{}, no model we
+test produces a positive rank information coefficient that survives a
+Newey--West standard error. \textsc{FinSentNet-C} is the strongest of the six
+at \kwPrimaryIC{} with $t=\kwPrimaryICt$, which is closer to the threshold than
+any baseline reaches and still short of it. The seed-to-seed standard deviation
+of that estimate is \kwPrimaryICsd{}, very nearly the size of the estimate
+itself, so a single-seed version of this result would be a coin flip dressed as
+a finding. None of the six clears realistic trading costs.
+
+The decision layer is a different story. Conformal coverage lands on nominal to
+three decimal places, and because a model this uncertain almost never produces
+a singleton prediction set, the abstention gate declines every name and holds
+\kwGateNamesHeld{} positions. Against an ungated book returning a net Sharpe of
+\kwUngatedSharpe{}, holding nothing is the best outcome available. We read this
 as a study in which the decision layer did its job and the predictor did not
-have one to do.
+quite have one to do.
 
 \subsection{The panel}
 
@@ -1538,13 +1562,22 @@ footnote states what it contains.}
 \subsection{Predictive performance}
 
 Table~\ref{tab:T3_main} is the conventional comparison, and it is the weakest
-instrument in the paper. Accuracy on a three-class problem with a dead band is
-dominated by the majority class, which is why the majority-class row is
-mandatory rather than decorative; rank IC with a Newey--West $t$ is the column
-that carries information. Read that column and the picture is uniform. The
-buy-and-hold row emits a constant cross-sectional score and so has no rank IC
-by construction, and it is included as a control on the plumbing rather than as
-a competitor.
+instrument in the paper. One row makes the case better than any argument we
+could write: the proposed model's three-class accuracy is \kwPrimaryAcc{}
+against a majority-class baseline of \kwPrimaryMajority{}. It classifies
+\emph{worse} than a rule that always says \Neutral{}, while simultaneously
+posting the highest rank information coefficient in the table. A reader who
+ranked these six models by accuracy would order them almost backwards.
+
+That is not a paradox and it is close to the thesis of this paper. Accuracy
+scores a decision the model is not asked to make. A cross-sectional book never
+classifies anything; it ranks, and it trades the top against the bottom. Rank
+IC with a Newey--West $t$ is the column that speaks to that, which is why the
+majority-class row is mandatory rather than decorative --- without it, an
+accuracy of \kwPrimaryAcc{} looks like weak evidence of something instead of
+clear evidence of nothing. The buy-and-hold row emits a constant
+cross-sectional score and so has no rank IC at all, and it is included as a
+control on the plumbing rather than as a competitor.
 
 \resulttable{T3_main}{Predictive comparison across baselines and the proposed
 model: accuracy, balanced accuracy, majority-class baseline, macro-$F_1$,
@@ -1558,13 +1591,26 @@ rank IC is undefined rather than zero.}
 \subsection{Calibration and conformal coverage}
 
 The calibration results are sharper than the predictive ones, exactly as
-Section~\ref{sec:discussion} anticipates. This is not a surprise and not a
-consolation prize: calibration is a statement about the agreement between
+Section~\ref{sec:discussion} anticipates. This is neither a surprise nor a
+consolation prize. Calibration is a statement about the agreement between
 stated and realised frequencies, and a model can be perfectly calibrated while
-being perfectly uninformative, by stating the base rate every time. That is
-close to what happens here, and it is why the coverage guarantee in
+being perfectly uninformative simply by stating the base rate every time. That
+is close to what happens here, and it is why the coverage guarantee in
 Table~\ref{tab:T4b_main} holds so tightly while the prediction sets in the same
-table remain large.
+table stay large: at a nominal \num{0.90} the mean set size is
+\kwCovATenSet{} of three possible classes.
+
+Table~\ref{tab:T4b_main} also settles a claim Section~\ref{sec:calibration} makes
+and Section~\ref{sec:adaptivecoverage} demonstrates on planted data, and it
+settles it on the market. Split conformal assumes exchangeability between the
+calibration block and the test block, and a walk-forward over a decade of
+equities does not supply it. Averaged across the $\alpha$ grid, split coverage
+misses nominal by \kwCovMeanAbsSplitGap{}; the online update of
+\citet{gibbs2021adaptive} misses by \kwCovMeanAbsAdaptiveGap{}, roughly four
+times closer, and at the primary level it lands on \kwCovATenAdaptive{} against
+a nominal \num{0.90}. We had expected to report this as a caveat and instead
+report it as a result: on real data the online variant is not a refinement of
+the split one, it is the one that works.
 
 \resulttable{T4_main}{Calibration before and after guarded post-hoc
 calibration: expected and maximum calibration error, Brier score, negative
