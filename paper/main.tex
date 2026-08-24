@@ -1382,7 +1382,7 @@ date $t$ has a cross-sectional rank correlation of \num{0.92} with the session
 that \emph{ended} at $t-1$, and \num{0.00} with the session ending at $t$ ---
 so the feature lag is exactly one session, which is worth stating in both
 directions. A lag of zero would leak, in the manner quantified in
-Section~\ref{sec:validation}. A lag of two would not leak but would silently
+Section~\ref{sec:lagdefect}. A lag of two would not leak but would silently
 discard a day of information, and would look like a weak model rather than like
 a defect, which is the harder failure to notice. Separately, the return the
 backtester accrues at $t$ agrees with $\text{open}(t{+}1)/\text{open}(t)-1$ to
@@ -1444,6 +1444,31 @@ as a study in which the decision layer did its job and the predictor did not
 have one to do.
 
 \subsection{The panel}
+
+Table~\ref{tab:T1_main} describes what the study actually ran on:
+\kwTickerDays{} ticker-days over \kwSessions{} sessions and
+\kwYearStart--\kwYearEnd{}, with \kwNames{} names in the screen. Two columns
+deserve a reader's attention before any result is interpreted.
+
+The first is the class balance by year. The dead band is scaled by a causal
+volatility estimate rather than fixed, which is what keeps the label from
+degenerating into a volatility detector, but it does not make the three classes
+equal: the \Up{} share exceeds the \Down{} share in most years, because the
+sample covers a decade in which US equities rose. That asymmetry is why the
+majority-class row in Table~\ref{tab:T3_main} is not decorative, and it is also
+what broke our first attempt at position sizing --- a detail we record in
+Section~\ref{sec:discussion} rather than quietly fix, because the failure is
+instructive.
+
+The second is the effective sample size. Overlapping five-day labels mean the
+row count overstates the information content by a factor of \kwESSFactor{},
+which is close to the $h+1$ the horizon implies. Every weighted loss and every
+standard error in this paper uses the corrected figure. A reader who compares
+our sample size to a paper that quotes raw rows should divide by that factor
+first.
+
+The news-coverage columns the design called for are absent, and their absence is
+not an oversight. The corpus audit is stated in the table's own footnote.
 
 \resulttable{T1_main}{Study panel composition: universe size by year,
 ticker-days, sessions per year, and label class balance. The news-coverage
@@ -1533,6 +1558,33 @@ do so.}
 
 \subsection{Economic evaluation}
 
+Table~\ref{tab:T6_main} is where a paper of this kind usually makes its claim,
+and where this one declines to. Three numbers in it carry the weight.
+
+The break-even cost is the first. It answers the only question a practitioner
+asks of a backtest --- how much friction the signal can absorb before it stops
+paying --- and it is reported here rather than a single net Sharpe at a
+flattering assumption. A negative break-even cost is not a small edge; it means
+the book loses money gross, before a single basis point is charged, and no
+execution improvement can rescue it.
+
+The second is turnover. A decile long--short book rebalanced every five
+sessions substantially replaces itself at each rebalance, and the annualised
+figures in Table~\ref{tab:T6_main} reflect that. This is the arithmetic set out
+in Section~\ref{sec:costs}, arriving as measurement rather than as estimate: at
+this turnover a signal needs a gross edge of roughly ten basis points a day
+simply to cover a ten basis point round trip, and nothing we measure comes
+close.
+
+The third is the Deflated Sharpe Ratio, computed against the declared trial
+budget rather than against one. Declaring the budget is what separates a
+selection procedure from data mining, and it cuts the way one would expect: we
+evaluated a model zoo, two horizons beyond the primary one, and a rebalance
+sweep, and the deflation charges us for all of them. We do not claim a risk
+premium, novel or otherwise. The alpha $t$-statistic does not approach the
+threshold of \citet{harvey2016and}, and Table~\ref{tab:T6_main} says so in the
+row where a more optimistic paper would have stopped reporting.
+
 \resulttable{T6_main}{Economic evaluation: gross and net Sharpe across the cost
 grid, break-even cost, annualised turnover, Probabilistic and Deflated Sharpe
 against the declared trial budget, and the Probability of Backtest
@@ -1543,6 +1595,34 @@ break-even cost means the strategy loses money before any cost is charged.}
 
 \subsection{Ablation status}
 
+Table~\ref{tab:T7_main} reports which ablations were run and which were not,
+which is a less satisfying table than the one this section was designed to
+contain. We think it is the honest one.
+
+Two of the pre-specified ablations are unavailable rather than negative. The
+headline-shuffle null test and the high-news-flow conditional ablation both
+require a corpus, and ours does not exist in usable form; we say so rather than
+substituting a proxy that would be easier to write and impossible for a referee
+to check. Their absence weakens the paper, and Section~\ref{sec:limitations}
+says how much.
+
+The architecture ablations are withheld for a stronger reason. Ablating the
+fusion block, the calibration term or the variance head is only informative if
+the unablated model has something to ablate; when its rank IC is
+\kwPrimaryIC{} at $t=\kwPrimaryICt$, the gap between two ablations is the
+difference between two noise terms. Table~\ref{tab:T7_main} makes that
+condition explicit and reports the ablation as meaningful only when the base
+$t$-statistic clears two, so a future run on a panel where the model does have
+an edge will produce the table without anyone having to remember why it was
+missing.
+
+What survives the null is the pair of decision-layer ablations, because they do
+not depend on the predictor being any good: raw against calibrated
+probabilities, and gate on against gate off. Those are the rows in
+Tables~\ref{tab:T5_main} and~\ref{tab:T5b_main}, and they are the ablations the
+paper's argument actually rests on.
+
+
 \resulttable{T7_main}{Ablation status: what was ablated, what was not, and why.}
 {An ablation of a model whose predictive signal is indistinguishable from zero
 measures the difference between two noise terms. We state that rather than
@@ -1550,6 +1630,29 @@ tabulating it. The decision-layer ablations survive the null and are reported
 in Tables~\ref{tab:T5_main} and~\ref{tab:T5b_main}.}
 
 \subsection{Robustness and diagnostics}
+
+Table~\ref{tab:T8_main} varies the three things most likely to be responsible
+for a result that exists only in one configuration: the subperiod, the horizon,
+and the seed. All three are swept as declared trials and counted against the
+Deflated Sharpe budget in Table~\ref{tab:T6_main}, which matters more than the
+sweep itself --- a robustness table assembled after the fact and not charged to
+the trial count is a menu, not a control.
+
+Seed variance is worth singling out. Across \kwSeeds{} seeds the spread in rank
+IC is of the same order as the point estimates themselves, which is the
+quantitative form of the warning in Section~\ref{sec:discussion}: at this sample
+size and this signal level, a difference between two models that is not larger
+than the difference between two seeds of one model is not a finding. It is the
+reason the paired sizing experiment, and not the model comparison, is the
+instrument we lean on.
+
+Table~\ref{tab:T9_main} is the gate diagnostic, and it is empty. The fusion gate
+$\bar g_t$ is a cross-modal quantity; with the news branch forced to its null
+embedding there is nothing for it to modulate, so the regression of $\bar g_t$
+on news volume, realised volatility and earnings proximity has no content. We
+report the table empty rather than deleting it, because a pre-specified
+diagnostic that quietly disappears between the protocol and the results is
+exactly the pattern the protocol was written to prevent.
 
 \resulttable{T8_main}{Robustness: subperiods, horizons $h\in\{1,5,21\}$, and
 seed variance.}
@@ -1633,7 +1736,7 @@ were unable to test that second proposition at all. What the null does
 establish is narrower and, we think, more useful: that a protocol built to
 resist its own optimism will return nothing when there is nothing there. Every
 component of this pipeline had the opportunity to manufacture a result. The
-execution-lag defect of Section~\ref{sec:validation} was worth an apparent rank
+execution-lag defect of Section~\ref{sec:lagdefect} was worth an apparent rank
 IC of \num{0.108} on driftless data, more than an order of magnitude above any
 signal we actually measure. Unguarded post-hoc calibration was worth a tenfold apparent
 improvement in calibration error while degrading it out of sample. Sizing on an
