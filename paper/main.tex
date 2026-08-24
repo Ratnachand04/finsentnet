@@ -9,7 +9,7 @@
 %     banner and placeholder result tables.
 %  \resultsreadytrue            : switch on once the walk-forward sweep has run.
 %     Result tables are then read from paper/tables/*.tex, emitted by
-%     finsent/eval/report.py, each carrying a provenance footnote (git sha,
+%     experiments/03\_make\_paper.py, each carrying a provenance footnote (git sha,
 %     config hash, data hash, seed list).
 %
 %  No number in this document is typed by hand. See SPEC.md section 6.
@@ -27,6 +27,7 @@
 \usepackage{geometry}
 \usepackage{caption}
 \usepackage{enumitem}
+\usepackage[authoryear,round]{natbib}   % author-year citations; the embedded bibliography already uses the matching bibitem form
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,fit,calc}
 \usepackage[colorlinks=true,linkcolor=blue!55!black,
@@ -89,7 +90,7 @@
     \begin{table}[t]\centering
       \caption{#2}\label{tab:#1}
       \fbox{\parbox{0.86\linewidth}{\small
-        \texttt{[#1 not yet generated]}\\[3pt]
+        \texttt{[\detokenize{#1} not yet generated]}\\[3pt]
         #3\\[3pt]
         \texttt{Produce with: make reproduce}}}
     \end{table}}}
@@ -112,6 +113,7 @@
 \newcommand{\fstar}{f^{\star}}
 \newcommand{\LN}{\mathrm{LN}}
 \newcommand{\ECE}{\mathrm{ECE}}
+\newcommand{\ic}{\mathrm{IC}}
 \newcommand{\Down}{\textsc{down}}
 \newcommand{\Neutral}{\textsc{neutral}}
 \newcommand{\Up}{\textsc{up}}
@@ -189,7 +191,7 @@ backtest overfitting.
 specified in Section~\ref{sec:protocol} has not been executed, so
 Section~\ref{sec:results} contains placeholders rather than numbers. Set
 \texttt{\textbackslash resultsreadytrue} in the preamble once
-\texttt{finsent/eval/report.py} has emitted \texttt{paper/tables/*.tex}. Every
+\texttt{experiments/03\_make\_paper.py} has emitted \texttt{paper/tables/*.tex}. Every
 result table is read from that directory and carries its own provenance
 footnote; no number in this document is entered by hand. The figures in
 Section~\ref{sec:validation} are measurements on \emph{controlled synthetic
@@ -562,47 +564,59 @@ $F=12$, $K=8$ and $d=128$.
 
 \begin{figure}[t]
 \centering
+% The picture is wrapped in \resizebox so it can never overflow the text block,
+% whatever the node labels grow into. The news-branch style is called "news" and not
+% "text": "text" is a TikZ key in its own right, and shadowing it silently drops the
+% style, which costs the nodes their frame, their fill and their line breaks.
+\resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[
-  font=\small, node distance=4mm and 6mm,
-  box/.style={draw,rounded corners=2pt,align=center,inner sep=3.2pt,
-              minimum height=8.5mm,font=\scriptsize},
+  font=\small, node distance=5mm and 7mm,
+  box/.style={draw,rounded corners=2pt,align=center,inner sep=3.5pt,
+              minimum height=9mm,minimum width=26mm,font=\scriptsize},
   price/.style={box,fill=orange!16,draw=orange!60!black},
-  text/.style={box,fill=blue!14,draw=blue!55!black},
-  fuse/.style={box,fill=violet!16,draw=violet!60!black},
-  head/.style={box,fill=green!16,draw=green!45!black},
+  news/.style={box,fill=blue!14,draw=blue!55!black},
+  fuse/.style={box,fill=violet!16,draw=violet!60!black,minimum width=96mm},
+  head/.style={box,fill=green!16,draw=green!45!black,minimum width=32mm},
   ar/.style={-{Latex[length=2mm]},draw=black!65}]
 
+  % ---- price branch
   \node[price] (x)  {price window\\$X\in\R^{60\times 12}$};
   \node[price,right=of x] (conv) {multi-scale causal conv\\$k\in\{3,7,15\}$, 32 ch};
   \node[price,right=of conv] (tcn) {dilated TCN\\$\{1,2,4,8\}$, 64 ch};
-  \node[price,right=of tcn] (gru) {GRU$(64{\to}128)$\\$H\in\R^{60\times128}$,\ $p\in\R^{128}$};
+  \node[price,right=of tcn] (gru) {GRU $64{\to}128$\\$H\in\R^{60\times128}$, $p\in\R^{128}$};
 
-  \node[text,below=12mm of x] (e) {cached FinBERT\\$E\in\R^{8\times768}$};
-  \node[text,right=of e] (proj) {project $768{\to}128$\\ $+$ LayerNorm};
-  \node[text,right=of proj] (pool) {salience attention pool\\recency $\oplus$ source};
-  \node[text,right=of pool] (s) {$s\in\R^{128}$\\(or $s_{\mathrm{null}}$)};
+  % ---- news branch (specified, not evaluated: see Section 8)
+  \node[news,below=10mm of x] (e) {cached FinBERT\\$E\in\R^{8\times768}$};
+  \node[news,right=of e] (proj) {project $768{\to}128$\\$+$ LayerNorm};
+  \node[news,right=of proj] (pool) {salience attention pool\\recency $\oplus$ source};
+  \node[news,right=of pool] (s) {$s\in\R^{128}$\\(or $s_{\mathrm{null}}$)};
 
-  \node[fuse,below=12mm of pool] (fus)
-       {gated cross-modal fusion\qquad
-        $c=\mathrm{MHA}(Q{=}s,K{=}H,V{=}H)$\\
-        $g=\sigma(W_g[s;p;c])$\qquad
+  % ---- fusion
+  \node[fuse,below=13mm of $(e)!0.5!(s)$] (fus)
+       {gated cross-modal fusion\\[1pt]
+        $c=\mathrm{MHA}(Q{=}s,\;K{=}H,\;V{=}H)$\qquad
+        $g=\sigma(W_g[s;p;c])$\\[1pt]
         $f=\LN\big(g\odot c+(1{-}g)\odot p\big)$};
 
-  \node[head,below left=10mm and 6mm of fus] (hd) {direction $u\in\R^{3}$};
-  \node[head,below=10mm of fus] (hm) {mean $\muhat$};
-  \node[head,below right=10mm and 6mm of fus] (hv) {log-variance $\log\sigmahat^{2}$};
+  % ---- heads
+  \node[head,below left=11mm and 14mm of fus] (hd) {direction $u\in\R^{3}$};
+  \node[head,below=11mm of fus] (hm) {mean $\muhat$};
+  \node[head,below right=11mm and 14mm of fus] (hv) {log-variance $\log\sigmahat^{2}$};
 
   \draw[ar] (x)--(conv); \draw[ar] (conv)--(tcn); \draw[ar] (tcn)--(gru);
   \draw[ar] (e)--(proj); \draw[ar] (proj)--(pool); \draw[ar] (pool)--(s);
-  \draw[ar] (gru.south) -- ++(0,-3mm) -| (fus.north east);
-  \draw[ar] (s.south) -- ++(0,-3mm) -| (fus.north west);
+  \draw[ar] (gru.east) -- ++(6mm,0) |- (fus.east);
+  \draw[ar] (s.south) -- ++(0,-4mm) -| (fus.north east);
   \draw[ar] (fus.south) -- (hm.north);
   \draw[ar] (fus.south west) -- (hd.north);
   \draw[ar] (fus.south east) -- (hv.north);
-\end{tikzpicture}
+\end{tikzpicture}}
 \caption{\textsc{FinSentNet-C}. FinBERT is frozen and its sentence embeddings
 are cached offline, so its 110M parameters never enter the training graph.
-Trainable parameters total \num{448{,}453}.}
+Trainable parameters total \num{448{,}453}. The news branch, shown in blue, is
+specified and implemented but \emph{not evaluated} in this paper: the available
+corpus cannot support a point-in-time claim, so every reported number comes
+from the model with the branch forced to $s_{\mathrm{null}}$.}
 \label{fig:arch}
 \end{figure}
 
