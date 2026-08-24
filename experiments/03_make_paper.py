@@ -533,6 +533,9 @@ def main() -> int:
             for f in sorted(Path("tests").glob("test_*.py"))
         ),
     }
+    if PRIMARY in panels:
+        key["kwSeeds"] = f"{panels[PRIMARY]['seed'].nunique()}"
+        key["kwFolds"] = f"{panels[PRIMARY]['fold'].nunique()}"
     if len(prim3):
         key["kwPrimaryIC"] = f"{float(prim3['Rank IC'].iloc[0]):+.4f}"
         key["kwPrimaryICt"] = f"{float(prim3['HAC t'].iloc[0]):+.2f}"
