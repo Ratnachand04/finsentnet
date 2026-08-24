@@ -1712,20 +1712,33 @@ forecast error, and underestimating conditional variance by a factor of two
 destroys all growth on a genuinely profitable signal. Around that result we
 built a deliberately compact cross-modal model, a guarded calibration
 procedure, a conformal abstention rule with distribution-free coverage, and an
-evaluation protocol whose controls we verified rather than asserted --- an
-exercise that surfaced two failure modes, one of which inflated a spurious
-information coefficient by a factor of twenty-five while remaining invisible to
-every splitter.
+evaluation protocol whose controls we verified rather than asserted.
 
-\ifresultsready
-Section~\ref{sec:results} reports what the protocol found.
-\else
-The empirical study specified in Section~\ref{sec:protocol} remains to be run.
-We have chosen to state the protocol, the pre-declared audit thresholds and the
-validation of the machinery in advance of the results rather than after them,
-because a protocol published before its outcome is a commitment and one
-published after it is a description.
-\fi
+That protocol then returned a null. On \kwTickerDays{} ticker-days across
+\kwYearStart--\kwYearEnd{}, no model we tested produced a positive rank
+information coefficient that survived a Newey--West standard error, and none
+cleared realistic trading costs. We report it because a protocol that can only
+be published when it finds something is not a protocol. Three defects in our
+own pipeline were caught on the way there, each of which would have produced a
+publishable-looking number: an execution-lag leak worth an apparent rank IC of
+\num{0.108} on data constructed to contain no signal at all, an unguarded
+post-hoc calibration step that improved validation calibration while degrading
+held-out calibration by an order of magnitude, and a sizing rule that saturated
+every position at its cap because it sized the level of the conditional mean
+instead of its cross-sectional deviation. None of the three was exotic. All
+three were invisible to a train/test splitter, and the first two were invisible
+to any amount of staring at the code.
+
+The decision layer is the part of the design that we would defend on this
+evidence. Conformal coverage held to three decimal places on real market data
+without assuming anything about the model's accuracy, and the abstention gate
+built on it declined every name --- which, against three ungated sizing rules
+that all lost money, was the best available outcome. That is not a flattering
+result and it is not meant to be. It is the concrete form of the paper's
+argument: a probability is only worth acting on to the extent it is calibrated,
+and a system that knows the difference will decline to bet rather than bet
+badly. We would rather publish a protocol that says nothing when there is
+nothing to say than one that has never been given the chance to.
 
 %==============================================================================
 \appendix
