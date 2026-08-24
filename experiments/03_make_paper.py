@@ -121,7 +121,13 @@ def write_key_numbers(mapping: dict[str, object]) -> None:
     for key, val in mapping.items():
         if isinstance(val, float):
             val = f"{val:.4f}" if abs(val) < 100 else f"{val:,.0f}"
-        out.append(f"{BS}newcommand{{{BS}{key}}}{{{val}}}")
+        # providecommand + renewcommand, never a bare newcommand. main.tex declares a
+        # visible fallback for each of these so that a missing file is obvious, and
+        # LaTeX treats a second definition of an existing macro as an error that
+        # leaves the original in place. That silently rendered every quoted number in
+        # the paper as the fallback while the tables beside them were correct.
+        out.append(f"{BS}providecommand{{{BS}{key}}}{{}}"
+                   f"{BS}renewcommand*{{{BS}{key}}}{{{val}}}")
     (TABLES / "keynumbers.tex").write_text(BS.join([]) + "\n".join(out) + "\n",
                                            encoding="utf-8")
     print(f"  wrote keynumbers.tex ({len(mapping)} macros)")
