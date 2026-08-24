@@ -33,7 +33,7 @@ from finsent.config import Config
 from finsent.data.splits import Fold, PurgedWalkForward
 from finsent.eval import metrics as M
 from finsent.training.calibrate import select_calibrator
-from finsent.training.conformal import SplitConformal
+from finsent.training.conformal import AdaptiveConformal, SplitConformal
 
 __all__ = ["FoldPrediction", "FitPredict", "WalkForwardResult", "run_walk_forward"]
 
@@ -169,10 +169,34 @@ def run_walk_forward(
                 predictor.fit(probs_val, pred.y_val)
                 mask = predictor.singleton_mask(probs_test)
                 gates[f"tradeable_a{int(round(a * 100)):02d}"] = mask
-                cov_rows.append({"fold": fold.index, "seed": seed,
+                cov_rows.append({"fold": fold.index, "seed": seed, "variant": "split",
                                  **predictor.evaluate(probs_test, pred.y_test)})
                 if a == primary_alpha:
                     tradeable = mask
+
+                # The online variant of Gibbs and Candes. Section 6.2 promises both, and
+                # only the adaptive one holds coverage when exchangeability fails across
+                # regimes, which financial data reliably arranges. It consumes each
+                # outcome only after emitting that row's set, so the ordering mirrors
+                # live use; passing the label first would be a leak.
+                if cfg.conformal.adaptive_enabled:
+                    online = AdaptiveConformal(
+                        alpha_target=a, gamma=cfg.conformal.adaptive_gamma,
+                        score=cfg.conformal.score,
+                    ).fit(probs_val, pred.y_val)
+                    out = online.run(probs_test, pred.y_test)
+                    cov_rows.append({
+                        "fold": fold.index, "seed": seed, "variant": "adaptive",
+                        "alpha": a, "nominal_coverage": 1.0 - a,
+                        "empirical_coverage": out["empirical_coverage"],
+                        "coverage_gap": out["empirical_coverage"] - (1.0 - a),
+                        "mean_set_size": out["mean_set_size"],
+                        "singleton_rate": out["singleton_rate"],
+                        "abstention_rate": 1.0 - out["singleton_rate"],
+                        "q_hat": float("nan"),   # q_hat moves every step here
+                        "final_alpha": out["final_alpha"],
+                        "n": int(pred.y_test.size),
+                    })
             if tradeable is None:  # a grid that somehow omits its own primary entry
                 tradeable = np.zeros(len(probs_test), dtype=bool)
 
