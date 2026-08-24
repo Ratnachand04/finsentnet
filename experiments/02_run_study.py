@@ -164,7 +164,8 @@ def make_gbm(columns=FEATURE_NAMES, max_iter: int = 200):
 # FinSentNet-C, price-only configuration
 # --------------------------------------------------------------------------------------
 def make_finsentnet(cfg, frame: pd.DataFrame, epochs: int = 12, lr: float = 3e-4,
-                    dates_per_batch: int = 24, device: str | None = None):
+                    dates_per_batch: int = 24, device: str | None = None,
+                    max_rows: int = 1536):
     """Train the cross-modal architecture in its forced price-only state.
 
     The dataset is built **once over the whole panel** and blocks are selected by
@@ -181,6 +182,7 @@ def make_finsentnet(cfg, frame: pd.DataFrame, epochs: int = 12, lr: float = 3e-4
     from finsent.training.objectives import CompositeObjective, LossWeights
 
     dev = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
+    amp = dev.type == "cuda" and torch.cuda.is_bf16_supported()
 
     dataset = PanelDataset(
         frame[["date", "ticker", *FEATURE_NAMES]],
@@ -215,33 +217,45 @@ def make_finsentnet(cfg, frame: pd.DataFrame, epochs: int = 12, lr: float = 3e-4
         for epoch in range(epochs):
             for batch in dataset.iter_date_batches(dates_per_batch, shuffle=True,
                                                    seed=seed + epoch, subset=train_dates):
-                t = batch.to_torch(dev)
-                opt.zero_grad()
-                out = model(price=t["price"])
-                loss, _ = objective(out.heads.logits, out.heads.mu, out.heads.logvar,
-                                    t["y_dir"], t["y_ret"], t["weights"], None, epoch)
-                loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.train.grad_clip)
-                opt.step()
+                for sub in batch.row_chunks(max_rows):
+                    t = sub.to_torch(dev)
+                    opt.zero_grad(set_to_none=True)
+                    # Activations in bf16, loss arithmetic in fp32. bf16 carries fp32's
+                    # exponent range, so no gradient scaler is needed and the Gaussian
+                    # NLL cannot overflow through log-variance; the halved activation
+                    # footprint is what makes a 60x128 recurrent stack fit next to a
+                    # 4-block TCN on an 8 GB card.
+                    with torch.autocast("cuda", dtype=torch.bfloat16, enabled=amp):
+                        out = model(price=t["price"])
+                    loss, _ = objective(
+                        out.heads.logits.float(), out.heads.mu.float(),
+                        out.heads.logvar.float(),
+                        t["y_dir"], t["y_ret"], t["weights"], None, epoch)
+                    loss.backward()
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.train.grad_clip)
+                    opt.step()
 
         @torch.no_grad()
         def infer(block: pd.DataFrame):
             model.eval()
             dates = pd.DatetimeIndex(sorted(pd.to_datetime(block["date"]).unique()))
             chunks = []
-            for batch in dataset.iter_date_batches(64, shuffle=False, subset=dates):
-                t = batch.to_torch(dev)
-                out = model(price=t["price"])
-                chunks.append(pd.DataFrame({
-                    "date": pd.to_datetime(batch.dates),
-                    "ticker": batch.tickers.astype(str),
-                    "l0": out.heads.logits[:, 0].cpu().numpy(),
-                    "l1": out.heads.logits[:, 1].cpu().numpy(),
-                    "l2": out.heads.logits[:, 2].cpu().numpy(),
-                    "mu": out.heads.mu.cpu().numpy(),
-                    "var": out.heads.sigma2.cpu().numpy(),
-                    "gate": out.fusion.gate_mean.cpu().numpy(),
-                }))
+            for batch in dataset.iter_date_batches(dates_per_batch, shuffle=False,
+                                                   subset=dates):
+                for sub in batch.row_chunks(max_rows):
+                    t = sub.to_torch(dev)
+                    with torch.autocast("cuda", dtype=torch.bfloat16, enabled=amp):
+                        out = model(price=t["price"])
+                    chunks.append(pd.DataFrame({
+                        "date": pd.to_datetime(sub.dates),
+                        "ticker": sub.tickers.astype(str),
+                        "l0": out.heads.logits[:, 0].float().cpu().numpy(),
+                        "l1": out.heads.logits[:, 1].float().cpu().numpy(),
+                        "l2": out.heads.logits[:, 2].float().cpu().numpy(),
+                        "mu": out.heads.mu.float().cpu().numpy(),
+                        "var": out.heads.sigma2.float().cpu().numpy(),
+                        "gate": out.fusion.gate_mean.float().cpu().numpy(),
+                    }))
             preds = pd.concat(chunks, ignore_index=True) if chunks else pd.DataFrame()
             keys = block[["date", "ticker"]].copy()
             keys["date"] = pd.to_datetime(keys["date"])
@@ -255,7 +269,15 @@ def make_finsentnet(cfg, frame: pd.DataFrame, epochs: int = 12, lr: float = 3e-4
 
         lv, _, _, _ = infer(val)
         lt, mt, vt, gt = infer(test)
-        return _pack(train, val, test, lv, lt, mt, np.maximum(vt, 1e-10), gate=gt)
+        packed = _pack(train, val, test, lv, lt, mt, np.maximum(vt, 1e-10), gate=gt)
+
+        # 13 folds x 3 seeds means 39 models are built in one process. Without an
+        # explicit release the allocator holds each one's arena and fragments, which is
+        # how a run that fits comfortably on fold 1 dies on fold 4.
+        del model, opt, objective
+        if dev.type == "cuda":
+            torch.cuda.empty_cache()
+        return packed
 
     return fit_predict
 
@@ -277,6 +299,12 @@ def main() -> int:
     ap.add_argument("--panel", default=str(PANEL))
     ap.add_argument("--out", default=str(OUT))
     ap.add_argument("--epochs", type=int, default=12)
+    ap.add_argument("--max-rows", type=int, default=1536,
+                    help="cap on rows per optimiser step; lower it if the device runs out")
+    ap.add_argument("--skip-existing", action="store_true",
+                    help="leave models whose panel is already on disk alone. The network "
+                         "takes hours and the baselines take minutes, so a failure late "
+                         "in the run should not cost the part that already succeeded.")
     args = ap.parse_args()
 
     cfg = load_config()
@@ -293,11 +321,14 @@ def main() -> int:
         if name not in MODELS:
             print(f"  unknown model {name!r}; skipping")
             continue
+        if args.skip_existing and (out / f"{name}.parquet").exists():
+            print(f"=== {name}: already on disk, skipping ===" + chr(10))
+            continue
         seeds = args.seeds if name not in ("buy_and_hold", "tsmom") else args.seeds[:1]
         print(f"=== {name} (seeds {seeds}) ===")
         t0 = time.time()
         builder = MODELS[name]
-        fp = (builder(cfg, frame, epochs=args.epochs)
+        fp = (builder(cfg, frame, epochs=args.epochs, max_rows=args.max_rows)
               if name == "finsentnet_c" else builder(cfg))
         result = run_walk_forward(frame, fp, cfg, seeds=seeds)
         print(f"  {result.summary()}")
