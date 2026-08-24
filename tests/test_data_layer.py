@@ -240,3 +240,69 @@ def test_sequential_bootstrap_raises_average_uniqueness():
         "sequentially bootstrapped draws should be spread out rather than clustered; "
         f"mean gap {np.mean(gaps):.2f}"
     )
+
+
+# --------------------------------------------------------------------------------------
+# Panel window gathering
+# --------------------------------------------------------------------------------------
+def test_vectorised_windows_match_the_scalar_slicer():
+    """The fast path must produce exactly what the readable one does.
+
+    Window gathering is the hot loop of training, so it is vectorised; that is only
+    safe if it is bit-identical to the per-row slice it replaces.
+    """
+    from finsent.data.panel import PanelDataset
+    from finsent.data.features_causal import FEATURE_NAMES
+
+    rng = np.random.default_rng(0)
+    dates = pd.bdate_range("2019-01-01", periods=400)
+    tickers = [f"T{i}" for i in range(6)]
+    rows = []
+    for t in tickers:
+        rows.append(pd.DataFrame({
+            "date": dates, "ticker": t,
+            **{f: rng.standard_normal(len(dates)) for f in FEATURE_NAMES},
+        }))
+    feats = pd.concat(rows, ignore_index=True)
+    labs = feats[["date", "ticker"]].copy()
+    labs["y_dir"] = rng.integers(0, 3, len(labs))
+    labs["y_ret"] = rng.standard_normal(len(labs)) * 0.01
+    labs["weight"] = 1.0
+
+    ds = PanelDataset(feats, labs, lookback=60)
+    idx = ds.index.iloc[np.sort(rng.choice(len(ds), 200, replace=False))]
+    dp = idx["date_pos"].to_numpy(dtype=int)
+    tp = idx["ticker_pos"].to_numpy(dtype=int)
+
+    fast = ds.windows(dp, tp)
+    slow = np.stack([ds.window(int(a), int(b)) for a, b in zip(dp, tp)]).astype(np.float32)
+
+    assert fast.shape == slow.shape == (200, 60, len(FEATURE_NAMES))
+    assert np.array_equal(fast, slow), "vectorised gather diverges from the scalar slicer"
+
+
+def test_windows_never_reach_forward():
+    """Perturbing a bar must not change any window that ends before it."""
+    from finsent.data.panel import PanelDataset
+    from finsent.data.features_causal import FEATURE_NAMES
+
+    rng = np.random.default_rng(1)
+    dates = pd.bdate_range("2019-01-01", periods=300)
+    feats = pd.DataFrame({
+        "date": dates, "ticker": "AAA",
+        **{f: rng.standard_normal(len(dates)) for f in FEATURE_NAMES},
+    })
+    labs = feats[["date", "ticker"]].copy()
+    labs["y_dir"] = 1
+    labs["y_ret"] = 0.0
+    labs["weight"] = 1.0
+
+    ds = PanelDataset(feats.copy(), labs, lookback=60)
+    base = ds.windows(np.array([150]), np.array([0]))
+
+    shocked = feats.copy()
+    shocked.loc[shocked.index[151:], FEATURE_NAMES] += 99.0
+    ds2 = PanelDataset(shocked, labs, lookback=60)
+    after = ds2.windows(np.array([150]), np.array([0]))
+
+    assert np.array_equal(base, after), "a window ending at t changed when t+1 changed"
