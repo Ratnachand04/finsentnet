@@ -9,6 +9,7 @@ import collections
 import io
 import re
 import sys
+from pathlib import Path
 
 path = sys.argv[1] if len(sys.argv) > 1 else "paper/main.tex"
 src = io.open(path, encoding="utf-8").read()
@@ -116,7 +117,23 @@ for (pos, depth, name), (nxt, ndepth, _) in zip(heads, heads[1:]):
         empty.append(name)
 report("no empty sections", empty)
 
-# 9. draft-mode state
+# 9. artifacts generated but never included. Two tables and two figures had been
+#    written to disk by the report script and referenced from nowhere in the manuscript,
+#    which is invisible in a compiled PDF: the result simply is not there to miss.
+report_script = Path(path).resolve().parent.parent / "experiments" / "03_make_paper.py"
+if report_script.exists():
+    rep = report_script.read_text(encoding="utf-8")
+    emitted_tables = set(re.findall(r"write_table\(\s*[\"']([A-Za-z0-9_]+)[\"']", rep))
+    used_tables = set(re.findall(r"\\resulttable\{([A-Za-z0-9_]+)\}", src))
+    report("every generated table is included", sorted(emitted_tables - used_tables))
+
+    emitted_figs = set(re.findall(r'FIGURES / ["\']([A-Za-z0-9_]+)\.pdf["\']', rep))
+    used_figs = set(re.findall(r"figures/([A-Za-z0-9_]+)\.pdf", src))
+    report("every generated figure is included", sorted(emitted_figs - used_figs))
+else:
+    print("  skip  generated-artifact check: report script not found")
+
+# 10. draft-mode state
 banners = len(re.findall(r"\\pending\{", src))
 mode = re.search(r"\\resultsready(true|false)", src)
 print(f"  info  pending banners: {banners}   results mode: "
