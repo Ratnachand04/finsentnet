@@ -31,6 +31,7 @@ STUDY = Path("runs/study")
 TABLES = Path("paper/tables")
 FIGURES = Path("paper/figures")
 
+ALPHA_COL = "$\\alpha$"   # the T5b column key, shared with figure F9
 PRIMARY = "finsentnet_c"
 ORDER = ["null_signal", "buy_and_hold", "tsmom", "logit5", "gbm", "finsentnet_c"]
 PRETTY = {
@@ -346,7 +347,7 @@ def main() -> int:
     ref = run_backtest(build_weights(main_panel, ungated), fwd_g, ungated,
                        CostModel(spread_bps=cfg.decision.default_bps), ppy)
     gate_rows.append({
-        "$\alpha$": np.nan, "Nominal cov.": np.nan, "Singleton rate": 1.0,
+        ALPHA_COL: np.nan, "Nominal cov.": np.nan, "Singleton rate": 1.0,
         "Names held": float((ref.weights.abs() > 1e-12).sum(axis=1).mean()),
         "Sharpe (net)": ref.summary_net.get("sharpe", np.nan),
         "Turnover (ann.)": ref.turnover * ppy,
@@ -364,7 +365,7 @@ def main() -> int:
         res = run_backtest(build_weights(sig, rule), fwd_g, rule,
                            CostModel(spread_bps=cfg.decision.default_bps), ppy)
         gate_rows.append({
-            "$\alpha$": a, "Nominal cov.": 1.0 - a,
+            ALPHA_COL: a, "Nominal cov.": 1.0 - a,
             "Singleton rate": float(sig[col].astype(bool).mean()),
             "Names held": float((res.weights.abs() > 1e-12).sum(axis=1).mean()),
             "Sharpe (net)": res.summary_net.get("sharpe", np.nan),
@@ -372,12 +373,12 @@ def main() -> int:
         })
     if len(gate_rows) > 1:
         write_table("T5b_main", pd.DataFrame(gate_rows),
-                    "\textbf{Abstention is a position.} The conformal gate swept across "
-                    "$\alpha$, holding predictions and sizing rule fixed. The first row is "
+                    "\\textbf{Abstention is a position.} The conformal gate swept across "
+                    "$\\alpha$, holding predictions and sizing rule fixed. The first row is "
                     "the ungated book.", prov,
-                    note=("At small $\alpha$ the prediction set is rarely a singleton, the "
+                    note=("At small $\\alpha$ the prediction set is rarely a singleton, the "
                           "gate declines every name, and the book is flat. The gate only "
-                          "starts to trade once $\alpha$ is loosened enough for the model's "
+                          "starts to trade once $\\alpha$ is loosened enough for the model's "
                           "own uncertainty to admit a single class."))
 
     # ---------------------------------------------------------------- T6: economic
@@ -506,12 +507,29 @@ def main() -> int:
         ax.set_xlabel("round-trip cost (bp)"); ax.set_ylabel("net Sharpe")
         fig.tight_layout(); fig.savefig(FIGURES / "F7_main.pdf"); plt.close(fig)
 
-        # F9 conformal
+        # F9 conformal: the guarantee on the left, what it costs to use it on the right.
         if cov_files:
-            fig, ax = plt.subplots(figsize=(5.4, 3.4), dpi=200)
+            fig, axes = plt.subplots(1, 2, figsize=(8.4, 3.3), dpi=200)
+            ax = axes[0]
             ax.plot(cov_t["alpha"], cov_t["Empirical"], "o-", lw=1.3, label="empirical")
             ax.plot(cov_t["alpha"], cov_t["Nominal"], "k--", lw=0.9, label="nominal")
-            ax.set_xlabel(r"$\alpha$"); ax.set_ylabel("coverage"); ax.legend(fontsize=8)
+            ax.set_xlabel(r"$\alpha$"); ax.set_ylabel("coverage")
+            ax.set_title("(a) coverage holds", fontsize=9); ax.legend(fontsize=8)
+
+            ax = axes[1]
+            ax.plot(cov_t["alpha"], cov_t["Singleton rate"], "s-", lw=1.3, color="C3",
+                    label="singleton rate")
+            ax.set_xlabel(r"$\alpha$"); ax.set_ylabel("fraction of names tradeable")
+            ax.set_ylim(-0.02, 1.02)
+            ax.set_title("(b) what the gate will trade", fontsize=9)
+            ax.legend(fontsize=8, loc="upper left")
+            if len(gate_rows) > 1:
+                g = pd.DataFrame(gate_rows).dropna(subset=[ALPHA_COL])
+                ax2 = ax.twinx()
+                ax2.plot(g[ALPHA_COL], g["Sharpe (net)"], "o--", lw=1.1, color="C0")
+                ax2.axhline(0.0, color="0.6", lw=0.7)
+                ax2.set_ylabel("net Sharpe", color="C0")
+                ax2.tick_params(axis="y", labelcolor="C0")
             fig.tight_layout(); fig.savefig(FIGURES / "F9_main.pdf"); plt.close(fig)
         print("  wrote figures F5, F6, F7, F9")
     except Exception as exc:
