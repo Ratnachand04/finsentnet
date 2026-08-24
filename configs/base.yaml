@@ -152,7 +152,7 @@ calibration:
 
 conformal:
   score: aps                     # {aps, lac}
-  alphas: [0.05, 0.10, 0.20]
+  alphas: [0.05, 0.10, 0.20, 0.30, 0.40, 0.50]   # 0.10 is primary (index 1)
   adaptive:
     enabled: true
     gamma: 0.005
