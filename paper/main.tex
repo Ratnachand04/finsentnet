@@ -1129,26 +1129,59 @@ Deflated Sharpe Ratio and the Probability of Backtest Overfitting. Declaring it
 is what distinguishes a selection procedure from data mining.
 
 \paragraph{Baselines.}
-Buy-and-hold; time-series momentum; an $\ell_2$-regularised multinomial
-logistic regression on five features; Loughran--McDonald lexicon sentiment; an
-LLM-scored sentiment scalar; FinBERT mean-pool with the same head; gradient-boosted
-trees on the same twelve features; DLinear \citep{zeng2023transformers};
-PatchTST \citep{nie2023time}; a price-only ablation of our own encoder; and an
-explicit null signal. The logistic and gradient-boosted baselines are the
-important ones. If eighteen parameters or a tuned tree ensemble ties
-\num{448{,}453}, that is the paper's finding and we report it as such.
+Six models are run under the identical protocol: an explicit null signal;
+buy-and-hold; time-series momentum; an $\ell_2$-regularised multinomial
+logistic regression on five features; gradient-boosted trees on the same twelve
+features; and \textsc{FinSentNet-C} itself. The logistic and gradient-boosted
+rows are the ones that matter. If eighteen parameters or a tuned tree ensemble
+ties \num{448{,}453}, that is the paper's finding and we report it as such. The
+null-signal and buy-and-hold rows are controls on the plumbing rather than
+competitors: a null signal that earned a Sharpe would indict the backtester,
+and buy-and-hold emits a constant cross-sectional score, so its rank IC is
+undefined rather than zero.
 
-\paragraph{Mandatory reported quantities.}
-Class histogram, confusion matrix, majority-class baseline, balanced accuracy
-and Matthews correlation alongside accuracy; daily cross-sectional rank
-information coefficient with Newey--West $t$-statistics; decile spread
-monotonicity; Diebold--Mariano against each baseline; Hansen's Superior
-Predictive Ability across the model zoo; expected and maximum calibration
-error, Brier score and reliability diagrams; conformal coverage and set size
-against nominal level; turnover; the net-of-cost curve; capacity; Probabilistic
-and Deflated Sharpe; Probability of Backtest Overfitting; and a factor
-regression of strategy returns on market, size, value, profitability,
-investment, momentum and short-term reversal with HAC standard errors.
+The design also called for Loughran--McDonald lexicon sentiment, an LLM-scored
+sentiment scalar, and FinBERT mean-pool with the same head. All three are text
+baselines and none can be run, for the reason given above: there is no usable
+corpus to score. We list them here rather than deleting them, because a
+baseline that disappears between the protocol and the results is
+indistinguishable from one that was dropped for performing too well.
+
+DLinear \citep{zeng2023transformers} and PatchTST \citep{nie2023time} are not
+run either, and that omission is ours rather than the data's. Both are
+forecasting architectures for continuous targets and adapting them to a
+three-class dead-band label is a modelling decision with enough freedom in it
+to constitute a separate paper; we would rather say so than report a weak
+adaptation of someone else's model as though it were their result. A
+replication that wants them will find the walk-forward driver takes any
+callable with the same signature.
+
+\paragraph{What we report, and what we do not.}
+Reported: the class histogram and its year-by-year balance; the majority-class
+baseline, balanced accuracy, macro-$F_1$, binary accuracy excluding
+\Neutral{}, and Matthews correlation alongside raw accuracy; the daily
+cross-sectional rank information coefficient with Newey--West $t$-statistics;
+Diebold--Mariano against the proposed model and Hansen's Superior Predictive
+Ability across the family, since a pairwise test run once per baseline and read
+at its smallest $p$-value is the multiple-comparison error that test exists to
+prevent; expected and maximum calibration error, Brier score, negative
+log-likelihood and a reliability diagram; conformal coverage, mean set size and
+singleton rate against nominal level; turnover; the net-of-cost curve with the
+break-even level marked; Probabilistic and Deflated Sharpe against the declared
+trial budget; and the Probability of Backtest Overfitting.
+
+Not reported, and why. A factor regression of strategy returns on market, size,
+value, profitability, investment, momentum and short-term reversal requires a
+point-in-time factor return file, and none accompanies this corpus; we do not
+substitute a proxy series and then describe the residual as alpha. A capacity
+estimate requires an impact model calibrated to executions we cannot observe,
+so Section~\ref{sec:costs} reports the cost curve that a reader can recalibrate
+instead of a capacity number that would look authoritative and be a guess.
+Confusion matrices and decile-spread monotonicity are computed by the released
+code but not typeset: for a predictor whose rank IC is indistinguishable from
+zero, a confusion matrix restates the class balance and a decile spread is a
+plot of noise ordered by noise. If a replication finds an edge, both become
+worth printing, and both are one function call away.
 
 \paragraph{Pre-specified ablations.}
 Text branch removed; text branch removed \emph{conditional on high news flow};
