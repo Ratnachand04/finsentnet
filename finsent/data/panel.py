@@ -82,6 +82,39 @@ class Batch:
             dates=s(self.dates),
         )
 
+    def group_chunks(self, max_rows: int):
+        """Yield slices of at most ``max_rows`` rows that never split a date.
+
+        The row cap exists to bound activation memory, but the cross-sectional ranking
+        term is computed within a date: splitting a date across two optimiser steps
+        would have it rank a fraction of the universe against itself, which is a
+        different and easier problem than the one the paper reports. Cutting only on
+        group boundaries keeps the cap while leaving each date whole.
+
+        A single date larger than ``max_rows`` is yielded whole rather than split,
+        because a partial cross-section is worse than a large one.
+        """
+        n = len(self)
+        if max_rows <= 0 or n <= max_rows:
+            yield self
+            return
+
+        gids = self.group_ids
+        # Date-batches arrive grouped, so boundaries are where group_ids changes.
+        edges = [0] + [i for i in range(1, n) if gids[i] != gids[i - 1]] + [n]
+        lo = 0
+        for k in range(1, len(edges)):
+            if edges[k] - lo > max_rows:
+                cut = edges[k - 1]
+                if cut > lo:                     # at least one whole date fits
+                    yield self.slice(lo, cut)
+                    lo = cut
+                if edges[k] - lo > max_rows:     # one date exceeds the cap on its own
+                    yield self.slice(lo, edges[k])
+                    lo = edges[k]
+        if lo < n:
+            yield self.slice(lo, n)
+
     def row_chunks(self, max_rows: int):
         """Yield row-slices of at most ``max_rows`` rows, or self when it already fits."""
         n = len(self)
