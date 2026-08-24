@@ -451,6 +451,38 @@ def main() -> int:
                         "return file accompanies this corpus, and we do not substitute a "
                         "proxy."))
 
+    # ---------------------------------------------------------------- T7: ablations
+    # Architecture ablations are only informative if the unablated model has something
+    # to ablate. When the base model's rank IC is statistically indistinguishable from
+    # zero, the gap between two ablations is a difference of two noise terms, and
+    # reporting it as an ablation table would dress up sampling variation as evidence.
+    # The decision-layer ablations -- raw against calibrated probabilities, gate on
+    # against gate off -- are the ones that remain interpretable under a null, and they
+    # are reported in T5 and T5b.
+    prim3 = t3[t3["Model"] == PRETTY.get(PRIMARY, PRIMARY)]
+    prim_ic = float(prim3["Rank IC"].iloc[0]) if len(prim3) else float("nan")
+    prim_t = float(prim3["HAC t"].iloc[0]) if len(prim3) else float("nan")
+    informative = np.isfinite(prim_t) and abs(prim_t) >= 2.0
+    t7 = pd.DataFrame([
+        {"Ablation": "Architecture (fusion, MMCE term, variance head)",
+         "Reported": "yes" if informative else "no",
+         "Reason": ("base model rank IC is significant" if informative else
+                    f"base rank IC {prim_ic:+.4f} (HAC t {prim_t:+.2f}) is "
+                    f"indistinguishable from zero")},
+        {"Ablation": "Text pathway (headline shuffle, high news-flow subset)",
+         "Reported": "no", "Reason": "no usable news corpus; see T1 and Limitations"},
+        {"Ablation": "Decision layer: raw vs calibrated probabilities",
+         "Reported": "yes", "Reason": "reported in T5"},
+        {"Ablation": "Decision layer: conformal gate on vs off",
+         "Reported": "yes", "Reason": "reported in T5b across the full alpha grid"},
+    ])
+    write_table("T7_main", t7,
+                "Ablation status. What was ablated, what was not, and why.", prov,
+                note=("An ablation of a model whose predictive signal is indistinguishable "
+                      "from zero measures the difference between two noise terms. We state "
+                      "that rather than tabulating it. The decision-layer ablations survive "
+                      "the null and are reported."))
+
     # ---------------------------------------------------------------- T8: robustness
     rows = []
     mp = main_panel.assign(year=pd.to_datetime(main_panel["date"]).dt.year)
@@ -494,7 +526,6 @@ def main() -> int:
         "kwYearEnd": f"{dts.dt.year.max()}",
         "kwESSFactor": f"{len(study)/ess:.1f}",
     }
-    prim3 = t3[t3["Model"] == PRETTY.get(PRIMARY, PRIMARY)]
     if len(prim3):
         key["kwPrimaryIC"] = f"{float(prim3['Rank IC'].iloc[0]):+.4f}"
         key["kwPrimaryICt"] = f"{float(prim3['HAC t'].iloc[0]):+.2f}"
