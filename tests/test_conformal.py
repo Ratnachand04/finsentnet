@@ -164,3 +164,89 @@ def test_fitting_on_test_data_is_not_silently_possible():
     predictor = SplitConformal(alpha=0.10)
     with pytest.raises(RuntimeError, match="fit must be called"):
         predictor.predict_sets(np.array([[0.5, 0.3, 0.2]]))
+
+
+# --------------------------------------------------------------------------------------
+# Adaptive conformal under distribution shift
+# --------------------------------------------------------------------------------------
+def _planted_block(rng, n, sharpness):
+    """Probabilities whose informativeness we control directly.
+
+    A positive sharpness puts mass on the true class; a negative one puts mass on a
+    wrong class, which is what a regime break looks like to a model fitted before it.
+    """
+    y = rng.integers(0, 3, n)
+    logits = rng.standard_normal((n, 3)) * 0.3
+    logits[np.arange(n), y] += sharpness
+    p = np.exp(logits)
+    return p / p.sum(axis=1, keepdims=True), y
+
+
+def test_both_variants_hold_coverage_when_exchangeability_holds():
+    """With no shift the online update should cost nothing worth noticing."""
+    rng = np.random.default_rng(0)
+    p_cal, y_cal = _planted_block(rng, 4000, 0.35)
+    p_test, y_test = _planted_block(rng, 4000, 0.35)
+
+    for alpha in (0.05, 0.10, 0.20):
+        split = SplitConformal(alpha=alpha, score="aps", seed=0).fit(p_cal, y_cal)
+        online = AdaptiveConformal(alpha_target=alpha, gamma=0.005, score="aps").fit(
+            p_cal, y_cal)
+
+        s = split.evaluate(p_test, y_test)["empirical_coverage"]
+        a = online.run(p_test, y_test)["empirical_coverage"]
+        assert abs(s - (1 - alpha)) < 0.02, f"split off nominal at alpha={alpha}: {s:.4f}"
+        assert abs(a - (1 - alpha)) < 0.02, f"adaptive off nominal at alpha={alpha}: {a:.4f}"
+
+
+def test_adaptive_holds_coverage_where_split_collapses():
+    """The reason the paper carries the online variant at all.
+
+    Split conformal assumes exchangeability between calibration and test. Break it and
+    the guarantee goes with it. The Gibbs--Candes update re-derives its own level from
+    realised coverage, so it recovers without being told a break occurred.
+    """
+    rng = np.random.default_rng(0)
+    p_cal, y_cal = _planted_block(rng, 4000, 0.35)
+    p_shift, y_shift = _planted_block(rng, 4000, -0.20)   # the model is now wrong
+
+    alpha = 0.10
+    split = SplitConformal(alpha=alpha, score="aps", seed=0).fit(p_cal, y_cal)
+    online = AdaptiveConformal(alpha_target=alpha, gamma=0.005, score="aps").fit(
+        p_cal, y_cal)
+
+    s = split.evaluate(p_shift, y_shift)["empirical_coverage"]
+    out = online.run(p_shift, y_shift)
+    a = out["empirical_coverage"]
+
+    assert s < 1 - alpha - 0.20, (
+        f"the planted break did not actually break split coverage: {s:.4f}"
+    )
+    assert abs(a - (1 - alpha)) < 0.03, (
+        f"adaptive failed to recover coverage under shift: {a:.4f} against {1-alpha}"
+    )
+    assert a - s > 0.25, "the adaptive variant bought nothing on this break"
+    assert out["final_alpha"] < alpha, (
+        "alpha should tighten when coverage is short, not loosen"
+    )
+
+
+def test_adaptive_consumes_the_label_only_after_emitting_the_set():
+    """Ordering is the whole leak surface of an online predictor.
+
+    ``step`` must return a set built from information available before the outcome. If
+    the label influenced the set it emitted, coverage would be trivially perfect.
+    """
+    rng = np.random.default_rng(1)
+    p_cal, y_cal = _planted_block(rng, 2000, 0.4)
+    online = AdaptiveConformal(alpha_target=0.10, gamma=0.005, score="aps").fit(
+        p_cal, y_cal)
+
+    row = np.array([0.5, 0.3, 0.2])
+    before = online.alpha_t
+    sets = [AdaptiveConformal(alpha_target=0.10, gamma=0.005, score="aps")
+            .fit(p_cal, y_cal).step(row, label=k) for k in range(3)]
+    assert all(np.array_equal(sets[0], s) for s in sets[1:]), (
+        "the emitted set depends on the label it has not seen yet"
+    )
+    assert online.alpha_t == before, "fitting alone must not move alpha"
