@@ -70,3 +70,8 @@ finsentnet_pro/backend/data/sql_training_companies/
 finsentnet_pro/backend/data/tunnels/
 finsentnet_pro/backend/checkpoints/
 *.jsonl
+
+# The Overleaf bundle is a copy of main.tex plus generated tables and figures, so it is
+# derived twice over. Regenerate with `make bundle`.
+paper/overleaf_bundle/
+paper/finsentnet_overleaf.zip
