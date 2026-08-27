@@ -1108,30 +1108,27 @@ This section is written before the results and is not revised in light of them.
 
 \paragraph{Data.}
 A point-in-time liquidity-screened universe of \kwNames{} US equities over
-\kwYearStart--\kwYearEnd{}, comprising \kwTickerDays{} ticker-days across
-\kwSessions{} sessions. The screen runs at each date on information available at
-that date, taking names priced above \$5 with trailing dollar volume above \$5M and
-ranking them on trailing data, and we verify that it never consults a future bar.
+\kwYearStart--\kwYearEnd{}: \kwTickerDays{} ticker-days across \kwSessions{}
+sessions. The screen runs at each date on information available then --- price
+above \$5, trailing dollar volume above \$5M, ranked on trailing data --- and we
+verify it never consults a future bar.
 
-That verification buys less than it appears to. The screen removes survivorship
-bias one level down, not at the level that matters most. The pool it ranks is a set
-of companies for which price history exists in the present, and it carries no
-delisting returns; we had no CRSP-style database that does. A point-in-time screen
-over a survivor-tilted pool inherits the tilt, and we would rather say so in the
-protocol section than bury it in a footnote.
+That verification buys less than it appears to. The pool the screen ranks
+contains companies whose price history exists in the present and carries no
+delisting returns; we had no CRSP-style database that does. A point-in-time
+screen over a survivor-tilted pool inherits the tilt, and this belongs in the
+protocol section rather than a footnote.
 
 The design called for headlines from a public, citable corpus with first-print
-timestamps \citep{dong2024fnspid}, so that a reviewer could rerun the text
-modality. What we actually hold does not meet that bar. Of \num{5391} news rows,
-\num{72} are non-empty, and those \num{72} carry \num{64} template titles across
-\num{9} distinct timestamps. We therefore report the text modality as not
-evaluated and run the model with the branch forced to its null embedding. Nine
-timestamps cannot support a point-in-time claim, and we would be inventing one if
-we tried. Scraping is not a substitute either: a retrospective scrape returns what
-is indexed today, not what was visible then, and link rot, last-modified stamps and
-post-hoc editorial revision are contamination that no publication lag addresses.
-Table~\ref{tab:T1_main} reports the panel and states the corpus audit in its
-footnote.
+timestamps \citep{dong2024fnspid}. What we hold does not meet that bar: of
+\num{5391} news rows, \num{72} are non-empty, carrying \num{64} template titles
+across \num{9} distinct timestamps. We therefore report the text modality as
+not evaluated and run the model with the branch forced to its null embedding.
+Nine timestamps cannot support a point-in-time claim. Scraping is no
+substitute: a retrospective scrape returns what is indexed today rather than
+what was visible then, and link rot, last-modified stamps and post-hoc revision
+are contamination no publication lag addresses.
+Table~\ref{tab:T1_main} reports the panel and states the corpus audit.
 
 \paragraph{Splits.}
 Purged, embargoed walk-forward with an expanding training window of at least
@@ -1147,59 +1144,48 @@ Deflated Sharpe Ratio and the Probability of Backtest Overfitting. Declaring it
 is what distinguishes a selection procedure from data mining.
 
 \paragraph{Baselines.}
-Six models are run under the identical protocol: an explicit null signal;
+Six models run under the identical protocol: an explicit null signal;
 buy-and-hold; time-series momentum; an $\ell_2$-regularised multinomial
-logistic regression on five features; gradient-boosted trees on the same twelve
-features; and \textsc{FinSentNet-C} itself. The logistic and gradient-boosted
-rows are the ones that matter. If eighteen parameters or a tuned tree ensemble
-ties \num{448{,}453}, that is the paper's finding and we report it as such. The
-null-signal and buy-and-hold rows are controls on the plumbing rather than
-competitors: a null signal that earned a Sharpe would indict the backtester,
+logistic on five features; gradient-boosted trees on the same twelve features;
+and \textsc{FinSentNet-C}. The logistic and tree rows are the ones that matter
+--- if eighteen parameters or a tuned ensemble ties \num{448{,}453}, that is
+the finding and we report it as such. Null signal and buy-and-hold are controls
+on the plumbing: a null signal earning a Sharpe would indict the backtester,
 and buy-and-hold emits a constant cross-sectional score, so its rank IC is
 undefined rather than zero.
 
-The design also called for Loughran--McDonald lexicon sentiment, an LLM-scored
-sentiment scalar, and FinBERT mean-pool with the same head. All three are text
-baselines and none can be run, for the reason given above: there is no usable
-corpus to score. We list them here rather than deleting them, because a
-baseline that disappears between the protocol and the results is
-indistinguishable from one that was dropped for performing too well.
-
-DLinear \citep{zeng2023transformers} and PatchTST \citep{nie2023time} are not
-run either, and that omission is ours rather than the data's. Both are
-forecasting architectures for continuous targets and adapting them to a
-three-class dead-band label is a modelling decision with enough freedom in it
-to constitute a separate paper; we would rather say so than report a weak
-adaptation of someone else's model as though it were their result. A
-replication that wants them will find the walk-forward driver takes any
-callable with the same signature.
+Three further baselines were specified and cannot run: Loughran--McDonald
+lexicon sentiment, an LLM-scored sentiment scalar, and FinBERT mean-pool. All
+three are text baselines and there is no usable corpus to score. We list them
+rather than deleting them, because a baseline that disappears between protocol
+and results is indistinguishable from one dropped for performing too well.
+DLinear \citep{zeng2023transformers} and PatchTST \citep{nie2023time} are also
+omitted, and that omission is ours rather than the data's: both forecast
+continuous targets, and adapting them to a three-class dead-band label carries
+enough modelling freedom to constitute a separate paper.
 
 \paragraph{What we report, and what we do not.}
-Reported: the class histogram and its year-by-year balance; the majority-class
-baseline, balanced accuracy, macro-$F_1$, binary accuracy excluding
-\Neutral{}, and Matthews correlation alongside raw accuracy; the daily
-cross-sectional rank information coefficient with Newey--West $t$-statistics;
+Reported: class histogram and yearly balance; majority-class baseline, balanced
+accuracy, macro-$F_1$, binary accuracy and Matthews correlation alongside raw
+accuracy; daily cross-sectional rank IC with Newey--West $t$;
 Diebold--Mariano against the proposed model and Hansen's Superior Predictive
 Ability across the family, since a pairwise test run once per baseline and read
 at its smallest $p$-value is the multiple-comparison error that test exists to
 prevent; expected and maximum calibration error, Brier score, negative
 log-likelihood and a reliability diagram; conformal coverage, mean set size and
-singleton rate against nominal level; turnover; the net-of-cost curve with the
-break-even level marked; Probabilistic and Deflated Sharpe against the declared
-trial budget; and the Probability of Backtest Overfitting.
+singleton rate against nominal level; turnover; the net-of-cost curve with
+break-even marked; Probabilistic and Deflated Sharpe against the declared trial
+budget; and the Probability of Backtest Overfitting.
 
-Not reported, and why. A factor regression of strategy returns on market, size,
-value, profitability, investment, momentum and short-term reversal requires a
-point-in-time factor return file, and none accompanies this corpus; we do not
-substitute a proxy series and then describe the residual as alpha. A capacity
-estimate requires an impact model calibrated to executions we cannot observe,
-so Section~\ref{sec:costs} reports the cost curve that a reader can recalibrate
-instead of a capacity number that would look authoritative and be a guess.
-Confusion matrices and decile-spread monotonicity are computed by the released
-code but not typeset: for a predictor whose rank IC is indistinguishable from
-zero, a confusion matrix restates the class balance and a decile spread is a
-plot of noise ordered by noise. If a replication finds an edge, both become
-worth printing, and both are one function call away.
+Not reported, with reasons. A factor regression requires a point-in-time factor
+return file and none accompanies this corpus; we do not substitute a proxy and
+call the residual alpha. A capacity estimate requires an impact model
+calibrated to executions we cannot observe, so Section~\ref{sec:costs} reports
+a cost curve a reader can recalibrate instead of an authoritative-looking
+guess. Confusion matrices and decile-spread monotonicity are computed by the
+released code but not typeset: for a predictor whose rank IC is
+indistinguishable from zero, a confusion matrix restates the class balance and
+a decile spread plots noise ordered by noise.
 
 \paragraph{Pre-specified ablations.}
 Text branch removed; text branch removed \emph{conditional on high news flow};
@@ -1258,255 +1244,105 @@ Calibration error after calibration        & 0.010--0.030  & ---\\
 \section{Protocol Validation}
 \label{sec:validation}
 
-Before reporting model results we validate the machinery that will produce
-them. Every number in this section is measured on \emph{controlled synthetic
-data} whose ground truth is known by construction: geometric price paths with a
-common factor, volatility clustering and, where stated, a planted signal of
-known strength. None of these numbers is a claim about markets. They are claims
-about the pipeline, and they are the reason the pipeline can be trusted with
-claims about markets later.
+A control is worth only as much as its verification. Before reporting model
+results we switch each control off and measure what it was holding back. Every
+number in Table~\ref{tab:validation} is measured on \emph{controlled synthetic
+data} whose ground truth is known by construction, except the two rows marked
+\emph{real panel}. None of them is a claim about markets; they are claims about
+the pipeline, and they are the reason it can be trusted with claims about
+markets afterwards.
 
-\subsection{Purging removes a boundary effect, and only a boundary effect}
-\label{sec:purgeworks}
-Let $\ell_t=\sum_{j=1}^{h}r_{t+j}$ be an overlapping $h$-period label over
-i.i.d.\ returns. Adjacent labels share $h-1$ of their $h$ terms, so
-$\mathrm{corr}(\ell_{t},\ell_{t+1})=(h-1)/h$. With $h=5$ this is $0.8$, and
-over 200 independent replications we measure $0.797$ --- the last training
-label before an unpurged boundary is very strongly correlated with the first
-test label. After purging $h$ sessions the same measurement gives $0.012$,
-indistinguishable from zero.
-
-The important qualification is that this is a \emph{boundary} phenomenon. Only
-the $O(h)$ samples adjacent to each boundary are contaminated; a
-purged-versus-unpurged comparison averaged over a whole test block will
-therefore show a small difference and can be misread as evidence that purging
-does not matter. Our test suite asserts the structural property directly ---
-for every fold, every training sample's label window ends strictly before the
-first evaluation position --- rather than relying on an aggregate learning
-signal.
-
-\subsection{A one-session execution lag worth five times the signal}
-\label{sec:lagdefect}
-The pre-declared audit threshold of Table~\ref{tab:audit} fired on the first
-end-to-end run, and it was correct.
-
-Features were computed causally and combined with an open-to-open label, as
-Section~\ref{sec:timestamps} specifies, but without the one-session lag of
-Remark~\ref{rem:lag}. On driftless synthetic data --- where by construction no
-feature can predict anything --- the measured per-feature cross-sectional rank
-information coefficients were as shown in Table~\ref{tab:lag}. A trailing
-five-day return, which must be uninformative, registered $0.108$.
-
-\begin{table}[t]
-\centering
-\caption{Per-feature cross-sectional rank information coefficient against the
-forward five-day open-to-open return, on driftless synthetic data where the
-true value is zero for every feature. Measured before and after applying the
-one-session execution lag of Remark~\ref{rem:lag}; identical data, identical
-splits, identical model. The planted sentiment feature carries a genuine
-$0.040$ and is unaffected, as it must be.}
-\label{tab:lag}
-\small
-\begin{tabular}{lcc}
-\toprule
-\textbf{Feature} & \textbf{Unlagged} & \textbf{Lagged one session}\\
-\midrule
-$\mathrm{ret}_5$        & $+0.108$ & $+0.004$\\
-$\mathrm{rsi}_{14}$     & $+0.092$ & $+0.006$\\
-$\mathrm{ewma\ vol}_{20}$ & $-0.025$ & $-0.026$\\
-$\mathrm{mom}_{12{-}1}$ & $-0.011$ & $-0.012$\\
-\midrule
-planted sentiment (truth $0.040$) & $+0.040$ & $+0.040$\\
-\midrule
-\textbf{fitted model}   & $\mathbf{+0.111}$ & $\mathbf{+0.033}$\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Three features of this defect deserve emphasis. It is invisible to any
-train/test splitter, because the contamination travels \emph{inside the row}
-rather than across a boundary; a purged walk-forward split reproduces it
-perfectly. It is invisible to inspection of the indicator code, every line of
-which is correctly causal. And it produces a number --- $0.111$ for the fitted
-model --- that is entirely publishable-looking, sitting comfortably within the
-range this literature routinely reports, while being roughly three times a
-realistic value and, on this data, wholly spurious. After the lag the model
-recovers $0.033$ against a planted $0.040$, which is the correct answer
-attenuated by the uninformative features it must also weigh.
-
-\begin{remark}
-We report this because the general lesson is more useful than the specific fix.
-An evaluation protocol needs a pre-declared implausibility threshold, and that
-threshold needs to be treated as a trigger for audit rather than as a target to
-clear. Ours was set at $0.06$ before any run; the first run returned $0.111$;
-the audit found the defect within an hour.
-\end{remark}
-
-\subsection{Post-hoc calibration can degrade calibration}
+\begin{table*}[t]
+\centering\small
+\caption{Each control, switched off and on. Synthetic data with known ground
+truth unless marked otherwise. The right-hand column is what the control is
+worth.}
+\label{tab:validation}
 \label{sec:caldegrade}
-Vector scaling fitted on an inner-validation block and evaluated on that same
-block reduced calibration error from $0.020$ to $0.004$. Evaluated on the
-subsequent test block it \emph{raised} calibration error from $0.003$ to
-$0.056$.
-
-The mechanism is identifiable. The base model was weak, so its logits had a
-standard deviation near $0.1$ and its softmax was close to uniform --- and a
-near-uniform predictor is already almost perfectly calibrated by accident
-(measured mean confidence $0.361$ against mean accuracy $0.365$). The six-parameter
-map therefore had a nearly flat likelihood to optimise, and it fitted the
-validation fold's class balance, which then drifted: one fold had a \Down\
-share of $0.28$ in validation against $0.46$ in test. The unconstrained fit also
-returned scales such as $(-0.019,-2.667,3.313)$, whose negative entries reverse
-the model's own class ordering.
-
-With positive-constrained scales, identity regularisation, and selection
-against an identity baseline on a held-out portion of the validation block, the
-same pipeline gives test calibration error of $0.027$ against a raw $0.023$ ---
-approximately neutral, which is the correct behaviour for an uninformative base
-model, and specifically \emph{not harmful}. Conformal coverage at
-$\alpha=0.10$ simultaneously improved from $0.854$ to $0.888$, since the
-probabilities feeding it were no longer distorted.
-
-\begin{remark}
-The general lesson is that post-hoc calibration is not free and should be
-treated as model selection with the identity map as a competitor. Reporting a
-calibration improvement measured on the fitting data is not evidence, for the
-same reason that reporting training accuracy is not evidence.
-\end{remark}
-
-\subsection{Conformal scores require randomisation at three classes}
 \label{sec:conformalrand}
-With three classes the non-randomised adaptive-prediction-set score is a coarse
-discrete variable, and the resulting sets over-cover severely: at a nominal
-$0.90$ we measured empirical coverage of $1.000$, achieved by the predictor
-simply admitting every class, with a singleton rate of exactly zero. The
-abstention gate never fired, which would have silently disabled the entire
-mechanism.
-
-Randomising the score restores near-exact coverage. Table~\ref{tab:conformal}
-reports coverage, set size and singleton rate over a range of nominal levels for
-both the adaptive and least-ambiguous scores. Coverage gaps are within $0.011$
-for $\alpha\le0.30$.
-
-\begin{table}[t]
-\centering
-\caption{Conformal coverage on synthetic data with 6{,}000 calibration and
-6{,}000 evaluation points, randomised scores. Gaps are within $0.011$ for
-$\alpha\le0.30$. At $\alpha=0.50$ the nominal level falls below the top-1
-accuracy floor imposed by the never-empty rule, so the predictor necessarily
-over-covers; that row is reported rather than omitted because the floor is a
-real property of the construction.}
-\label{tab:conformal}
-\small
-\begin{tabular}{lccccc}
+\label{sec:lagdefect}
+\label{sec:purgeworks}
+\begin{tabular}{llrr}
 \toprule
-\textbf{Score} & $\boldsymbol\alpha$ & \textbf{Coverage} & \textbf{Gap}
- & \textbf{Mean set size} & \textbf{Singleton rate}\\
+\textbf{Control} & \textbf{Measured quantity} & \textbf{Off} & \textbf{On}\\
 \midrule
-APS & 0.05 & 0.953 & $+0.003$ & 2.47 & 0.02\\
-APS & 0.10 & 0.904 & $+0.004$ & 2.14 & 0.10\\
-APS & 0.20 & 0.794 & $-0.006$ & 1.66 & 0.37\\
-APS & 0.30 & 0.711 & $+0.011$ & 1.36 & 0.64\\
-APS & 0.50 & 0.605 & $+0.105$ & 1.05 & 0.95\\
+Purging & corr of adjacent overlapping labels & 0.797 & 0.012\\
+Execution lag & rank IC of $\mathrm{ret}_5$, driftless data & $+0.108$ & $+0.004$\\
+Execution lag & rank IC of $\mathrm{rsi}_{14}$, driftless data & $+0.092$ & $+0.006$\\
+Execution lag & fitted model, planted signal $0.040$ & $+0.111$ & $+0.033$\\
 \midrule
-LAC & 0.10 & 0.894 & $-0.007$ & 2.01 & 0.22\\
-LAC & 0.30 & 0.690 & $-0.010$ & 1.26 & 0.74\\
+Guarded calibration & test-block ECE & 0.056 & 0.027\\
+Guarded calibration & conformal coverage at $\alpha=0.10$ & 0.854 & 0.888\\
+Score randomisation & coverage at nominal $0.90$ & 1.000 & 0.904\\
+Score randomisation & singleton rate (the gate's input) & 0.000 & 0.10\\
+Online $\alpha$ update & coverage under a planted regime break & 0.467 & 0.897\\
 \midrule
-\multicolumn{6}{l}{\emph{Overconfident base model} (logits scaled by 2.5):}\\
-APS & 0.10 & 0.899 & $-0.001$ & 2.11 & 0.19\\
+\emph{Real panel} & $\mathrm{ret}_1$ vs.\ session ending $t{-}1$ / $t$ & --- & 0.92 / 0.00\\
+\emph{Real panel} & traded return vs.\ $\mathrm{open}(t{+}1)/\mathrm{open}(t)-1$ & --- & $<10^{-9}$\\
 \bottomrule
 \end{tabular}
-\end{table}
+\vspace{2pt}\footnotesize Purging: adjacent $h$-period labels share $h-1$ of
+$h$ terms, so the theoretical value is $(h-1)/h=0.8$; we measure $0.797$ over
+200 replications, and $0.012$ after purging. End-to-end, the full protocol
+recovers a planted rank IC of $0.040$ as $0.033$ with Newey--West $t=3.12$
+across 8 folds and 2 seeds --- below the planted value, as it must be, since
+the model must also weigh eleven uninformative features.
+\end{table*}
 
-The last row is the property that makes conformal prediction worth the section.
-A model stating two and a half times the confidence it has earned still
-receives its nominal coverage; it simply pays for it with larger sets. That
-guarantee is distribution-free and holds without any assumption that the model
-is correct --- which, at this signal level, is a considerably more useful thing
-to be able to promise than accuracy.
+Four of these deserve comment because the general lesson outlives the specific
+fix.
 
-\subsection{The online variant is what survives a regime break}
+\paragraph{The execution lag is the one that would have been published.}
+Features were causal in isolation and combined with an open-to-open label, but
+without the one-session lag of Remark~\ref{rem:lag}. On data constructed to
+contain no signal, a trailing five-day return registered a rank IC of $0.108$
+and the fitted model $0.111$ --- entirely publishable-looking, sitting inside
+the range this literature routinely reports. The defect is invisible to any
+train/test splitter, because the contamination travels \emph{inside the row}
+rather than across a boundary, and invisible to inspection of the indicator
+code, every line of which is correctly causal. Our pre-declared audit threshold
+of $0.06$ (Table~\ref{tab:audit}) fired on the first run and the audit found it
+within an hour. An evaluation protocol needs an implausibility threshold fixed
+in advance, and it needs to be treated as a trigger rather than a target.
+
+\paragraph{Purging is a boundary effect, and only a boundary effect.}
+Only the $O(h)$ samples adjacent to each boundary are contaminated, so a
+purged-against-unpurged comparison averaged over a whole test block shows a
+small difference and is easily misread as evidence that purging does not
+matter. Our test suite therefore asserts the structural property directly ---
+for every fold, every training label window ends strictly before the first
+evaluation position --- rather than relying on an aggregate learning signal.
+
+\paragraph{Post-hoc calibration is not free.}
+Vector scaling fitted on an inner-validation block and evaluated on that same
+block reduced calibration error from $0.020$ to $0.004$; evaluated on the
+subsequent test block it \emph{raised} it from $0.003$ to $0.056$. The
+mechanism is identifiable. The base model was weak, its logits had a standard
+deviation near $0.1$, and a near-uniform predictor is already almost perfectly
+calibrated by accident (mean confidence $0.361$ against mean accuracy $0.365$).
+The six-parameter map had a nearly flat likelihood, so it fitted the validation
+fold's class balance, which then drifted: one fold had a \Down{} share of
+$0.28$ in validation against $0.46$ in test. The unconstrained fit also
+returned scales such as $(-0.019,-2.667,3.313)$, whose negative entries reverse
+the model's own class ordering. Treat post-hoc calibration as model selection
+with the identity map as a competitor, and report it on data that did not fit
+it.
+
+\paragraph{Exchangeability fails, and only the online variant repairs it.}
 \label{sec:adaptivecoverage}
+Split conformal buys its guarantee with an exchangeability assumption between
+calibration and test blocks, and financial data breaks it on a schedule. Under
+a planted break --- probability mass moved onto a class other than the realised
+one, which is what a regime change looks like to a model fitted before it ---
+split coverage falls to $0.467$ against a nominal $0.900$ while the
+Gibbs--Cand\`es update holds $0.897$, reading its own realised coverage and
+tightening $\alpha_t$ until the shortfall closes. Section~\ref{sec:results}
+shows the same pattern on the market. One property makes an online coverage
+number worth anything: the predictor emits each set \emph{before} consuming the
+outcome, and our suite asserts that the emitted set is unchanged across all
+three possible labels, which is the only form of that check that cannot pass by
+accident.
 
-Split conformal buys its guarantee with an assumption, and the assumption is
-exchangeability between the calibration block and the test block. Financial data
-breaks it on a schedule. It is worth measuring what the break actually costs,
-because the guarantee does not degrade gracefully when its premise fails.
-
-We construct the failure directly. A calibration block is drawn in which the model
-carries genuine information, and a test block in which the same model is wrong:
-probability mass sits on a class other than the realised one, which is what a
-regime change looks like to a predictor fitted before it. Under exchangeability
-both variants land on nominal, within \num{0.02} at every $\alpha$ we tried. Under
-the break they part company. At a nominal \num{0.90}, split coverage falls to
-\num{0.467}. The Gibbs--Candès update holds \num{0.897}, and it does so without
-being told that anything happened: it reads its own realised coverage and tightens
-$\alpha_t$ until the shortfall closes.
-
-Two points follow. The first is that a distribution-free guarantee is only as
-distribution-free as its exchangeability assumption, and a paper that reports
-split coverage on financial data without testing that assumption is reporting a
-number whose premise it has not checked. The second is about ordering. An online
-predictor consumes each outcome only after emitting that row's set, and if the
-label reached the set first, coverage would be perfect and meaningless. Our test
-suite asserts that the emitted set is unchanged across all three possible labels,
-which is the only form of that check that cannot pass by accident.
-
-%==============================================================================
-
-\subsection{The contract holds on the real panel, not only on fixtures}
-\label{sec:validation:real}
-
-Every check above runs on synthetic data whose ground truth we control, which
-is the right way to test machinery and the wrong way to test a dataset. A
-lag applied in the wrong direction, a label joined to the wrong session or a
-traded return that begins a day early are defects in the panel rather than in
-the code that manipulates it, and a fixture cannot see them. We therefore
-assert the timestamp contract directly against the built panel.
-
-Two quantities pin it down. The trailing one-session return feature carried at
-date $t$ has a cross-sectional rank correlation of \num{0.92} with the session
-that \emph{ended} at $t-1$, and \num{0.00} with the session ending at $t$ ---
-so the feature lag is exactly one session, which is worth stating in both
-directions. A lag of zero would leak, in the manner quantified in
-Section~\ref{sec:lagdefect}. A lag of two would not leak but would silently
-discard a day of information, and would look like a weak model rather than like
-a defect, which is the harder failure to notice. Separately, the return the
-backtester accrues at $t$ agrees with $\text{open}(t{+}1)/\text{open}(t)-1$ to
-within $10^{-9}$, so the position taken at the open of $t$ earns the move that
-begins at the open of $t$.
-
-We also sweep every feature column for an implausibly large rank information
-coefficient against the return it is used to predict, with the audit threshold
-of \num{0.06} fixed in advance. At daily frequency on liquid US equities a
-single-feature rank IC above that level is a timestamp defect until proven
-otherwise, and treating it as a discovery is how leakage is published. No
-column reaches it. These three assertions are tests in the released suite
-rather than statements in a paper, and they skip rather than pass when the
-panel is absent, so they cannot quietly become vacuous.
-
-%==============================================================================
-
-\subsection{End-to-end recovery on a planted signal}
-\label{sec:recovery}
-Running the complete protocol --- point-in-time universe, causal features,
-volatility-scaled labels, purged walk-forward with per-fold calibration and
-conformal gating --- on synthetic data with a planted sentiment signal of
-cross-sectional rank information coefficient $0.040$ recovers $0.033$ with a
-Newey--West $t$-statistic of $3.12$ across 8 folds and 2 seeds
-(26{,}208 out-of-sample predictions). Class balance was
-$(\Down,\Neutral,\Up)=(0.339,0.356,0.305)$, and the effective sample size after
-the uniqueness correction of Equation~\eqref{eq:uniqueness} was 4{,}959 against
-29{,}692 rows --- a factor of six, as the horizon implies.
-
-Two aspects are worth noting. The recovered value is \emph{below} the planted
-one, as it should be: the model must also weigh eleven uninformative features.
-And the singleton rate under conformal gating at $\alpha=0.10$ was near zero,
-because the base model was deliberately weak; an abstention mechanism that
-declines to trade on an uninformative model is behaving correctly, and this is
-why Figure~\ref{fig:F9_main} sweeps $\alpha$ rather than fixing it.
-
-%==============================================================================
 \section{Results}
 \label{sec:results}
 
