@@ -81,7 +81,7 @@ tables:
 bundle: check-clean-tree tables
 	rm -rf $(OUT)/overleaf_bundle $(OUT)/finsentnet_overleaf.zip
 	mkdir -p $(OUT)/overleaf_bundle/tables $(OUT)/overleaf_bundle/figures
-	cp $(OUT)/main.tex $(OUT)/overleaf_bundle/
+	cp $(OUT)/main.tex $(OUT)/supplementary.tex $(OUT)/overleaf_bundle/
 	cp $(OUT)/tables/*_main.tex $(OUT)/tables/keynumbers.tex $(OUT)/overleaf_bundle/tables/
 	cp $(OUT)/figures/F5_main.pdf $(OUT)/figures/F6_main.pdf $(OUT)/figures/F7_main.pdf $(OUT)/figures/F9_main.pdf $(OUT)/overleaf_bundle/figures/
 	$(PY) -c "import shutil; shutil.make_archive('$(OUT)/finsentnet_overleaf','zip','$(OUT)/overleaf_bundle')"
