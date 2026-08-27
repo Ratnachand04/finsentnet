@@ -33,8 +33,13 @@
 \usepackage[colorlinks=true,linkcolor=blue!55!black,
             citecolor=blue!55!black,urlcolor=blue!55!black]{hyperref}
 
-\geometry{margin=1.9cm,columnsep=6mm}
-\captionsetup{font=small,labelfont=bf}
+\geometry{margin=1.7cm,columnsep=5.5mm}
+\captionsetup{font=small,labelfont=bf,skip=4pt}
+\linespread{0.97}\selectfont
+\setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 2pt}
+\setlength{\abovedisplayskip}{5pt plus 2pt minus 2pt}
+\setlength{\belowdisplayskip}{5pt plus 2pt minus 2pt}
 
 %--------------------------------------------------------------- num helper --
 % Lightweight stand-in for siunitx \num so the file needs no extra package.
@@ -313,65 +318,61 @@ have objected to either.
 \paragraph{Relation to prior work by the authors.}
 This paper supersedes an earlier design by the same authors that used a deeper
 text stack, a fixed-threshold label, a single chronological holdout and a
-barrier-odds Kelly rule. Appendix~\ref{app:supersede} lists the specification
+barrier-odds Kelly rule. The supplementary material lists the specification
 conflicts that reconciliation resolved, since several changed the meaning of
-reported quantities rather than merely their values.
+reported quantities rather than merely their values, along with the test that
+prevents each from recurring.
 
 %==============================================================================
 \section{Related Work}
 \label{sec:related}
 
 \paragraph{Machine learning in empirical asset pricing.}
-The modern reference point is \citet{gu2020empirical}, whose comparison of
-regularised linear models, trees and neural networks over a large panel
-establishes both the achievable signal level and the evaluation conventions the
-field has converged on. \citet{kellyxiu2023} survey it; \citet{chen2024deep}
-extend it with deep conditional asset-pricing models, and
-\citet{jiang2023reimagining} show that convolutional encoders over price charts
-recover recognisable technical structure. A consistent finding is that flexible
-models do not dominate regularised linear ones by wide margins at this
-signal-to-noise ratio, which is the empirical basis for the capacity argument
-of Section~\ref{sec:capacity}. \citet{fischer2018deep} give the recurrent
-benchmark most directly comparable to a daily directional model.
+The reference point is \citet{gu2020empirical}, which establishes both the
+achievable signal level and the field's evaluation conventions;
+\citet{kellyxiu2023} survey the area, \citet{chen2024deep} extend it with deep
+conditional asset-pricing models, and \citet{jiang2023reimagining} show that
+convolutional encoders over price charts recover recognisable technical
+structure. \citet{fischer2018deep} give the recurrent benchmark closest to a
+daily directional model. The consistent finding --- that flexible models do not
+dominate regularised linear ones at this signal-to-noise ratio --- is the
+empirical basis for the capacity argument of Section~\ref{sec:capacity}.
 
 \paragraph{Text and returns.}
-\citet{tetlock2007giving} established that a simple count of negative words in
-a widely read column predicts returns and volume, and
-\citet{loughran2011liability} showed that general-purpose sentiment lexicons
-misread financial language. Transformer encoders adapted to financial corpora
-followed \citep{araci2019finbert,yang2020finbert,huang2023finbert}; at least
-three distinct models are called FinBERT, and we state our checkpoint
-explicitly in Appendix~\ref{app:hyper}. \citet{ke2019predicting} extract
-return-predictive content with a supervised topic model, and
-\citet{lopezlira2023chatgpt} report that instruction-tuned language models score
-headlines competitively, which motivates our LLM-scored-sentiment baseline.
+\citet{tetlock2007giving} established that negative word counts in a widely
+read column predict returns and volume, and \citet{loughran2011liability}
+showed that general-purpose lexicons misread financial language. Transformer
+encoders adapted to financial corpora followed
+\citep{araci2019finbert,yang2020finbert,huang2023finbert}; at least three
+distinct models are called FinBERT, so we state our checkpoint explicitly in
+Appendix~\ref{app:hyper}. \citet{ke2019predicting} extract return-predictive
+content with a supervised topic model and \citet{lopezlira2023chatgpt} report
+that instruction-tuned models score headlines competitively.
 \citet{dong2024fnspid} and \citet{zhou2021trade} provide timestamped,
-ticker-linked corpora that make the text modality reproducible;
+ticker-linked corpora that would make the text modality reproducible;
 \citet{xu2018stocknet} remains the standard paired text--price benchmark.
 
 \paragraph{Cross-modal fusion.}
 Query--key--value interaction across modalities was formalised in
-vision-and-language work \citep{lu2019vilbert,chen2020uniter}. The gating
-mechanism descends more directly from gated multimodal units
-\citep{arevalo2017gated}. In finance, \citet{hu2018listening} pair a news
-encoder with attention over price sequences and
-\citet{sawhney2021quantitative} attend between transcripts and price graphs.
-Our block is deliberately shallow --- one block, four heads --- and pairs the
-gate with modality dropout, which converts the fusion ablation from a
+vision-and-language work \citep{lu2019vilbert,chen2020uniter}, and our gate
+descends from gated multimodal units \citep{arevalo2017gated}. In finance,
+\citet{hu2018listening} pair a news encoder with attention over price sequences
+and \citet{sawhney2021quantitative} attend between transcripts and price
+graphs. Our block is deliberately shallow --- one block, four heads --- and
+pairs the gate with modality dropout, which turns the fusion ablation from a
 retraining exercise into an evaluation-time intervention on one set of weights.
 
 \paragraph{Calibration and distribution-free uncertainty.}
 \citet{guo2017calibration} documented the miscalibration of modern networks and
 introduced temperature and vector scaling. Binned calibration error is
-piecewise constant in the parameters and therefore has no useful gradient, so
-training-time calibration requires a surrogate; we use the kernel statistic of
-\citet{kumar2018trainable}. \citet{mukhoti2020calibrating} show that focal loss
-itself alters calibration, which is why we keep it off by default and treat it
-as an ablation. For set-valued prediction we use split conformal
+piecewise constant in the parameters and has no useful gradient, so
+training-time calibration needs a surrogate; we use the kernel statistic of
+\citet{kumar2018trainable}. \citet{mukhoti2020calibrating} show focal loss
+alters calibration on its own, which is why we keep it off by default. For
+set-valued prediction we use split conformal
 \citep{vovk2005algorithmic,angelopoulos2021gentle} with the adaptive-set score
 of \citet{romano2020classification} and the online update of
-\citet{gibbs2021adaptive}, which maintains coverage under the distribution
-shift that financial data reliably supplies.
+\citet{gibbs2021adaptive}.
 
 \paragraph{Sizing, and evaluation under selection.}
 Growth-optimal betting originates with \citet{kelly1956new}; the
@@ -381,8 +382,8 @@ $\kappa<1$. Our propositions are, to our knowledge, the first explicit
 statement in this applied literature of the log-growth penalty as a function of
 \emph{calibration} error specifically. On evaluation we follow
 \citet{lopezdeprado2018advances} for purging, embargoing and label uniqueness;
-\citet{bailey2014deflated} for the Deflated Sharpe Ratio;
-\citet{bailey2017probability} for the Probability of Backtest Overfitting;
+\citet{bailey2014deflated} and \citet{bailey2017probability} for the Deflated
+Sharpe Ratio and the Probability of Backtest Overfitting;
 \citet{diebold1995comparing}, \citet{white2000reality} and
 \citet{hansen2005test} for predictive-accuracy and multiple-comparison tests;
 and \citet{harvey2016and} for the significance threshold appropriate to a
@@ -420,26 +421,15 @@ the decision executed at the open of session $t$ if and only if
 \label{eq:lag}
 \end{equation}
 and returns are measured open-to-open from $\mathrm{open}(t)$ to
-$\mathrm{open}(t+h)$. Table~\ref{tab:timestamps} works the rule through three
-cases; the second is the one most often got wrong.
+$\mathrm{open}(t+h)$.
 
-\begin{table}[t]
-\centering
-\caption{The timestamp contract of Equation~\eqref{eq:lag} with a 09:30
-US/Eastern open. A 16:30 headline is \emph{not} usable at the next morning's
-open: only 17 hours have elapsed.}
-\label{tab:timestamps}
-\small
-\begin{tabular}{lll}
-\toprule
-\textbf{Publication (US/Eastern)} & \textbf{Decision open} & \textbf{Return window}\\
-\midrule
-Tue 09:00 (before Tuesday's open) & Wed 09:30 & Wed open $\to$ Wed$+h$ open\\
-Tue 16:30 (after Tuesday's close) & Thu 09:30 & Thu open $\to$ Thu$+h$ open\\
-Sat 03:00 (weekend)               & Mon 09:30 & Mon open $\to$ Mon$+h$ open\\
-\bottomrule
-\end{tabular}
-\end{table}
+Worked through, the rule says: a headline published at 09:00 on Tuesday, before
+that day's open, informs the decision executed at Wednesday's 09:30 open and
+earns the return from Wednesday's open onward. One published at 16:30 on
+Tuesday, after the close, is \emph{not} usable at Wednesday's open --- only 17
+hours have elapsed --- so it informs Thursday. A weekend headline informs
+Monday. The second case is the one most often got wrong.
+
 
 \begin{remark}[Features must be lagged, not merely causal]
 \label{rem:lag}
@@ -673,8 +663,7 @@ Most ticker-days carry no relevant headline; this is the most common input
 state rather than an edge case. Those rows receive a learned null embedding
 $s_{\mathrm{null}}$ and a zero attention vector. They are \emph{not} dropped:
 news days are systematically higher-volatility, so discarding the remainder
-would be a selection bias. News coverage per ticker-day is reported in
-Table~\ref{tab:T1_main}.
+would be a selection bias. News coverage per ticker-day is reported in the supplementary material.
 
 \paragraph{What was removed, and why.}
 No convolutional or recurrent stack sits on top of the encoder. FinBERT already
@@ -735,9 +724,9 @@ log-likelihood.
 
 \subsection{Capacity}
 \label{sec:capacity}
-Table~\ref{tab:T2_main} gives the realised parameter count by module. It is emitted
-by the implementation and asserted against the specification by the test suite, so
-it cannot drift from the model that produced our numbers. Roughly
+The supplementary material gives the realised parameter count by module. It is
+emitted by the implementation and asserted against the specification by the test
+suite, so it cannot drift from the model that produced our numbers. Roughly
 $8.8\times10^{5}$ training rows at an average uniqueness near $0.25$ leave about
 $2.2\times10^{5}$ effectively independent samples, which works out at close to two
 such samples per parameter. That is tight. We think it is defensible, and it is the
@@ -754,12 +743,9 @@ describes the specified architecture. We state the split here because a capacity
 argument that counts inert parameters overstates the model in one direction while
 understating its data efficiency in the other.
 
-\resulttable{T2_main}{Trainable parameters by module. Frozen FinBERT
-(110M) is an offline cache and does not appear.}
-{Asserted against the implementation by \texttt{tests/test\_model.py} and
-against \texttt{configs/base.yaml} by the configuration validator. The
-evaluated configuration is the forced price-only state, in which the text
-encoder emits its learned null embedding.}
+The realised parameter count by module is given in the supplementary
+material, emitted by the implementation and asserted against the
+specification by the test suite.
 
 %==============================================================================
 \section{Training Objective}
@@ -1128,7 +1114,7 @@ Nine timestamps cannot support a point-in-time claim. Scraping is no
 substitute: a retrospective scrape returns what is indexed today rather than
 what was visible then, and link rot, last-modified stamps and post-hoc revision
 are contamination no publication lag addresses.
-Table~\ref{tab:T1_main} reports the panel and states the corpus audit.
+The supplementary material reports the panel and states the corpus audit.
 
 \paragraph{Splits.}
 Purged, embargoed walk-forward with an expanding training window of at least
@@ -1346,11 +1332,11 @@ accident.
 \section{Results}
 \label{sec:results}
 
-Every number in this section is generated, not transcribed. Tables and figures
-are emitted by the released pipeline, and the figures quoted in running text
-are macros read from the same run, so the prose and the tables cannot disagree
-about what the study found. Appendix~\ref{app:hyper} records the commit,
-configuration, data and seeds behind the whole artifact set.
+Every number in this section is generated, not transcribed: tables and figures
+are emitted by the released pipeline, and figures quoted in running text are
+macros read from the same run, so prose and tables cannot disagree.
+Appendix~\ref{app:hyper} records the commit, configuration, data and seeds
+behind the whole artifact set.
 
 \paragraph{The result in one paragraph.}
 On \kwTickerDays{} ticker-days spanning \kwYearStart--\kwYearEnd{}, no model we
@@ -1371,8 +1357,11 @@ as a study in which the decision layer did its job and the predictor did not
 quite have one to do.
 
 \subsection{The panel}
+The supplementary material breaks the panel down by year: universe size,
+ticker-days, sessions and label class balance. Two features of it condition
+every later number.
 
-Table~\ref{tab:T1_main} describes what the study actually ran on:
+The study ran on
 \kwTickerDays{} ticker-days over \kwSessions{} sessions and
 \kwYearStart--\kwYearEnd{}, with \kwNames{} names in the screen. Two columns
 deserve a reader's attention before any result is interpreted.
@@ -1393,11 +1382,7 @@ error here uses the corrected figure.
 The news-coverage columns the design called for are absent, and their absence is
 not an oversight. The corpus audit is stated in the table's own footnote.
 
-\resulttable{T1_main}{Study panel composition: universe size by year,
-ticker-days, sessions per year, and label class balance. The news-coverage
-columns the design called for are absent because the corpus is not usable; the
-footnote states what it contains.}
-{Populated by \texttt{03\_make\_paper.py} from the point-in-time panel.}
+
 
 \subsection{Predictive performance}
 
@@ -1405,18 +1390,15 @@ Table~\ref{tab:T3_main} is the conventional comparison and the weakest
 instrument in the paper. One row makes the case: the proposed model's
 three-class accuracy is \kwPrimaryAcc{} against a majority-class baseline of
 \kwPrimaryMajority{}. It classifies \emph{worse} than a rule that always says
-\Neutral{}, while posting the highest rank information coefficient in the
-table. A reader ranking these six models by accuracy would order them almost
-backwards.
+\Neutral{}, while posting the highest rank IC in the table --- a reader ranking
+these six models by accuracy would order them almost backwards.
 
-That is close to the thesis of this paper. Accuracy scores a decision the model
-is not asked to make: a cross-sectional book never classifies, it ranks, and it
-trades the top against the bottom. Rank IC with a Newey--West $t$ is the column
-that speaks to that, which is why the majority-class row is mandatory ---
-without it, an accuracy of \kwPrimaryAcc{} looks like weak evidence of
-something rather than clear evidence of nothing. Buy-and-hold emits a constant
-cross-sectional score and so has no rank IC at all; it is a control on the
-plumbing, not a competitor.
+That is close to the thesis. Accuracy scores a decision the model is not asked
+to make: a cross-sectional book never classifies, it ranks, and trades the top
+against the bottom. Rank IC with a Newey--West $t$ is the column that speaks to
+that, and it is why the majority-class row is mandatory --- without it, an
+accuracy of \kwPrimaryAcc{} reads as weak evidence of something rather than
+clear evidence of nothing.
 
 \resulttable{T3_main}{Predictive comparison across baselines and the proposed
 model: accuracy, balanced accuracy, majority-class baseline, macro-$F_1$,
@@ -1429,25 +1411,24 @@ rank IC is undefined rather than zero.}
 
 \subsection{Calibration and conformal coverage}
 
-The calibration results are sharper than the predictive ones, and this is
-neither a surprise nor a consolation prize. A model can be perfectly calibrated
-while being perfectly uninformative, by stating the base rate every time. That
-is close to what happens here, and it is why the guarantee in
+The calibration results are sharper than the predictive ones, which is neither
+surprising nor a consolation prize: a model can be perfectly calibrated while
+being perfectly uninformative, by stating the base rate every time. That is
+close to what happens here, and it is why the guarantee in
 Table~\ref{tab:T4b_main} holds so tightly while the prediction sets in the same
-table stay large: at a nominal \num{0.90} the mean set size is
+table stay large --- at a nominal \num{0.90} the mean set size is
 \kwCovATenSet{} of three classes.
 
 Table~\ref{tab:T4b_main} also settles on the market a claim
 Section~\ref{sec:calibration} makes and Section~\ref{sec:adaptivecoverage}
 demonstrates on planted data. Split conformal assumes exchangeability between
-the calibration and test blocks, and a decade of walk-forward does not supply
-it: split coverage misses nominal by \kwCovMeanAbsSplitGap{} averaged across
-the $\alpha$ grid, and undershoots at \emph{every} level. The online update of
-\citet{gibbs2021adaptive} misses by \kwCovMeanAbsAdaptiveGap{}, roughly four
-times closer, landing on \kwCovATenAdaptive{} against a nominal \num{0.90}. We
-expected to report this as a caveat and report it instead as a result: here the
-adaptive variant is not a refinement of the split one, it is the one that
-works.
+calibration and test blocks, and a decade of walk-forward does not supply it:
+split coverage misses nominal by \kwCovMeanAbsSplitGap{} averaged over the
+$\alpha$ grid and undershoots at \emph{every} level, while the online update of
+\citet{gibbs2021adaptive} misses by \kwCovMeanAbsAdaptiveGap{} and lands on
+\kwCovATenAdaptive{} against a nominal \num{0.90}. We expected to report this
+as a caveat and report it as a result: here the adaptive variant is not a
+refinement of the split one, it is the one that works.
 
 \resulttable{T4_main}{Calibration before and after guarded post-hoc
 calibration: expected and maximum calibration error, Brier score, negative
@@ -1462,20 +1443,7 @@ rate that the abstention gate keys on, across the full $\alpha$ grid.}
 accurate. The singleton rate is what decides whether the gate ever trades, and
 it is a property of the model's uncertainty rather than of the guarantee.}
 
-\begin{figure}[t]
-\centering
-\IfFileExists{figures/F5_main.pdf}
-  {\includegraphics[width=\linewidth]{figures/F5_main.pdf}}
-  {\fbox{\parbox{0.94\linewidth}{\centering\vspace{16mm}
-   \small\texttt{[F5 not yet generated]}\\[3pt]
-   Reliability curve, raw against calibrated\vspace{16mm}}}}
-\caption{Reliability of the proposed model's probabilities, before and after the
-guarded post-hoc map. Points on the diagonal are calibrated. The curves are
-short because a model close to the base rate emits confidences over a narrow
-range, and that narrowness is itself the finding: a predictor which never
-states more than modest confidence has little to be miscalibrated about.}
-\label{fig:F5_main}
-\end{figure}
+
 
 \subsection{The sizing experiment}
 
@@ -1522,16 +1490,13 @@ Read the top row of Table~\ref{tab:T6_main} first. Net Sharpe is already
 negative at \emph{zero} cost, so the break-even level is negative: the book
 loses money gross, before a basis point is charged, and no improvement in
 execution rescues it. That is a stronger statement than a thin edge eaten by
-friction, and it is why we report the whole curve rather than a single net
-Sharpe quoted at whichever assumption flatters the result.
+friction, and it is why we report the whole curve rather than a net Sharpe
+quoted at whichever cost flatters the result.
 
-Two further numbers carry weight. Turnover reflects a decile book that
-substantially replaces itself at each five-session rebalance, which is the
-arithmetic of Section~\ref{sec:costs} arriving as measurement. And the Deflated
-Sharpe Ratio is computed against the declared trial budget rather than against
-one: we evaluated a model zoo, two horizons beyond the primary one and a
-rebalance sweep, and the deflation charges us for all of them. We claim no risk
-premium. The alpha $t$-statistic does not approach the threshold of
+The Deflated Sharpe Ratio is computed against the declared trial budget rather
+than against one: we evaluated a model zoo, two horizons beyond the primary one
+and a rebalance sweep, and the deflation charges us for all of them. We claim
+no risk premium --- the alpha $t$-statistic does not approach the threshold of
 \citet{harvey2016and}, and the table says so in the row where a more optimistic
 paper would stop reporting.
 
@@ -1586,43 +1551,29 @@ Tables~\ref{tab:T5_main} and~\ref{tab:T5b_main}.
 
 
 \subsection{Robustness and diagnostics}
-
-Table~\ref{tab:T8_main} varies the three things most likely to be responsible
-for a result that exists in one configuration only: subperiod, horizon and
-seed. All three are swept as declared trials and charged to the Deflated Sharpe
-budget, which matters more than the sweep itself --- a robustness table
-assembled after the fact and not counted against the trial budget is a menu,
-not a control.
-
-Seed variance deserves singling out. Across \kwSeeds{} seeds the spread in rank
-IC is \kwPrimaryICsd{} against a mean of \kwPrimaryIC{}. A difference between
-two models that is no larger than the difference between two seeds of one model
-is not a finding, which is why the paired sizing experiment rather than the
-model comparison is the instrument we lean on.
-
-\resulttable{T8_main}{Robustness: subperiods, horizons $h\in\{1,5,21\}$, and
-seed variance.}
-{Horizon and rebalance frequency are swept as declared trials and counted
-against the Deflated Sharpe budget in Table~\ref{tab:T6_main}, not selected
-after the fact.}
-
-The gate diagnostic pre-specified in Section~\ref{sec:protocol} could not be
-run. The fusion gate $\bar g_t$ is a cross-modal quantity, the model ran in a
-forced price-only state, and a gate that never sees a headline has nothing to
-modulate. We record the outcome here rather than dropping the row: a
-pre-specified diagnostic that disappears between protocol and results is
-indistinguishable from one abandoned for saying the wrong thing.
+The supplementary material varies the three things most likely to be
+responsible for a result that exists in one configuration only: subperiod,
+horizon and seed. Rank IC is positive in every year of the sample and clears
+$t=2$ in none of them; net Sharpe is positive in one year of seven. All three
+sweeps are declared trials, charged to the Deflated Sharpe budget --- a
+robustness table assembled after the fact and not counted against the trial
+budget is a menu, not a control.
 
 
 \begin{figure}[t]
 \centering
+\IfFileExists{figures/F5_main.pdf}
+  {\includegraphics[width=0.49\linewidth]{figures/F5_main.pdf}\hfill}{}%
 \IfFileExists{figures/F6_main.pdf}
-  {\includegraphics[width=\linewidth]{figures/F6_main.pdf}}
+  {\includegraphics[width=0.49\linewidth]{figures/F6_main.pdf}}
   {\fbox{\parbox{0.94\linewidth}{\centering\vspace{16mm}
    \small\texttt{[F6 not yet generated]}\\[3pt]
    Theoretical bound of Equation~\eqref{eq:prop3} against measured fold-level
    calibration error\vspace{16mm}}}}
-\caption{Log-growth loss against calibration error: the bound of
+\caption{Left: reliability of the proposed model's probabilities before and
+after the guarded post-hoc map; the curve is short because a model near the
+base rate emits confidences over a narrow range, and that narrowness is the
+finding. Right: log-growth loss against calibration error, the bound of
 Proposition~\ref{prop:ece} plotted with measured per-fold points. Agreement
 between the curve and the points converts the proposition from a derivation
 into a validated law.}
@@ -1675,35 +1626,33 @@ component helps by less than its own standard error is worse, because it still
 looks like evidence.
 
 \paragraph{What a null result does and does not establish.}
-We did not find a tradeable edge. We want to be precise about how far that
-statement reaches. It covers six models, one universe of \kwNames{} liquid US
-names, a five-session horizon and a single decade. It is not a claim that
-short-horizon cross-sectional prediction is impossible. It is emphatically not a
-claim that news carries no information about returns, since we were unable to test
-that proposition at all.
+We did not find a tradeable edge, and the scope of that statement is narrow: six
+models, one universe of \kwNames{} liquid US names, a five-session horizon, one
+decade. It is not a claim that short-horizon cross-sectional prediction is
+impossible, and certainly not that news carries no information about returns ---
+we could not test that proposition at all.
 
-What the null does establish is narrower and, we think, more useful. A protocol
-built to resist its own optimism will return nothing when there is nothing there.
-Every component of this pipeline had an opportunity to manufacture a result. The
-execution-lag defect of Section~\ref{sec:lagdefect} was worth an apparent rank IC
-of \num{0.108} on data constructed to contain no signal, more than an order of
-magnitude above anything we actually measure. Unguarded post-hoc calibration was
-worth a tenfold apparent improvement in calibration error while degrading it out
-of sample. Sizing on an uncentred conditional mean pinned every position to its
-cap. A verified control caught each one. Any of the three, left alone, would have
-yielded a number worth writing up.
+What the null does establish is more useful. A protocol built to resist its own
+optimism returns nothing when there is nothing there, and every component of
+this pipeline had the opportunity to manufacture a result instead. The
+execution-lag defect of Section~\ref{sec:lagdefect} was worth an apparent rank
+IC of \num{0.108} on data constructed to contain no signal, more than an order
+of magnitude above anything we measure. Unguarded post-hoc calibration was
+worth a tenfold apparent improvement while degrading held-out calibration.
+Sizing on an uncentred conditional mean pinned every position to its cap. A
+verified control caught each; any of the three, left alone, would have yielded
+a number worth writing up.
 
 \paragraph{The decision layer is the part that worked.}
 On real market data the conformal layer delivered its guarantee to three decimal
-places, \kwCovAFive{} empirical against a nominal \num{0.95}, assuming nothing
-whatever about the model's accuracy. That is what a distribution-free guarantee is
-for. Its practical consequence here is uncomfortable and instructive. The model
-has no edge, so its prediction sets are almost never singletons, so the abstention
-gate declines every name and holds \kwGateNamesHeld{} positions. The gated book
-returns nothing. Returning nothing was the best outcome available, because the
-three ungated sizing rules all lost money. There is nothing clever in this. The
-gate is simply honest about the model's uncertainty, and under a null that turns
-out to be enough to win.
+places --- \kwCovAFive{} against a nominal \num{0.95} --- assuming nothing about
+the model's accuracy, which is what a distribution-free guarantee is for. The
+practical consequence is uncomfortable and instructive. The model has no edge,
+so its prediction sets are almost never singletons, so the gate declines every
+name and holds \kwGateNamesHeld{} positions. The gated book returns nothing, and
+nothing was the best outcome available, because the three ungated rules all lost
+money. There is nothing clever in this: the gate is honest about the model's
+uncertainty, and under a null that is enough to win.
 
 \paragraph{Why the architecture is deliberately small.}
 Every component here is individually standard. The contribution is not novelty
@@ -1838,72 +1787,6 @@ to say it.
 %==============================================================================
 \appendix
 
-\section{Reconciled Specification}
-\label{app:supersede}
-
-Table~\ref{tab:supersede} lists the specification conflicts resolved relative
-to the authors' earlier design. Several changed the \emph{meaning} of a
-reported quantity rather than merely its value, which is why they are recorded
-rather than silently corrected. Each frozen decision is enforced by a test that
-fails if the conflict is reintroduced.
-
-\begin{table}[t]
-\centering
-\caption{Resolved specification conflicts. The right-hand column names the
-mechanism that prevents recurrence.}
-\label{tab:supersede}
-\small
-\begin{tabular}{p{4.1cm}p{6.4cm}p{3.6cm}}
-\toprule
-\textbf{Item} & \textbf{Resolution} & \textbf{Enforced by}\\
-\midrule
-Label convention & $\Down=0$, $\Neutral=1$, $\Up=2$, frozen &
-  hand-computed fixture test\\
-Class weights & inverse frequency; the majority class receives the
-  \emph{smallest} weight & loss test\\
-Sizing & continuous $f=\kappa\muhat/\sigmahat^{2}$; barrier-odds Kelly removed &
-  growth-theory tests\\
-Confidence multiplier & removed; a calibrated probability already carries it &
-  sizing implementation\\
-Loss weights & one objective, Equation~\eqref{eq:objective}; others are
-  ablations & configuration\\
-Early-stopping patience & one value throughout & spec/config equality test\\
-Feature count & $F=12$, one list & spec/config equality test\\
-Inference-time text path & identical to training; no lexicon-to-token bridge &
-  single code path\\
-Sortino denominator & $\sqrt{\E[\min(r-\mathrm{MAR},0)^{2}]}$ over \emph{all}
-  periods & hand-computed value test\\
-Execution lag & one session, applied by default & both-directions regression
-  test\\
-Post-hoc calibration & guarded selection with identity as a candidate &
-  selection tests\\
-Conformal score & randomised & coverage tests\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\section{Features and Indicators}
-\label{app:features}
-
-Twelve causal features spanning six economically distinct groups: returns
-($r_1$, $r_5$, $r_{21}$); momentum (12-1 momentum skipping the most recent
-month, and a five-day overnight-gap reversal); volatility (EWMA realised
-volatility, ATR normalised by price, Garman--Klass range volatility); trend
-(MACD histogram normalised by ATR); mean reversion (RSI, Bollinger \%B); and
-liquidity (log dollar volume). Each is winsorised at 1\% and ranked
-cross-sectionally within each date to $[-0.5,0.5]$, which removes the market
-factor, renders each feature stationary across regimes, and makes the model
-learn relative attractiveness --- the quantity a cross-sectional book actually
-trades.
-
-Two implementation notes. The reversal feature is defined as a sum of overnight
-gaps rather than as the negation of the five-day return, which would be
-perfectly collinear with it. And every indicator is verified to $10^{-6}$
-against a reference implementation; the conventions that cause hand-rolled
-indicators to drift --- SMA-seeded exponential averages, Wilder smoothing at
-$\alpha=1/n$ rather than $2/(n+1)$, and population rather than sample standard
-deviation in the Bollinger bands --- are pinned by closed-form tests.
-
 \section{Hyperparameters and Provenance}
 \label{app:hyper}
 
@@ -1934,25 +1817,14 @@ commit which does not describe the code that produced the numbers is not
 provenance. We would rather publish a stamp that says so than one that quietly
 does not mean anything.
 
-\section{Generative Augmentation}
-\label{app:gan}
-
-Retained as an ablation only. The generator emits OHLCV alone, with ordering
-constraints enforced in the output parameterisation, and the derived indicators
-are recomputed with the same causal code used on real data. Generating
-indicators jointly with prices, as is sometimes done, produces windows in which
-an indicator is inconsistent with the prices it is supposed to summarise ---
-physically impossible market states from which the encoder learns relationships
-that do not exist. Conditioning is on fitted hidden-Markov regime states rather
-than on a threshold rule, since a rule's thresholds are themselves fitted
-parameters that no trial budget counts. Synthetic quality is assessed by
-discriminative and predictive scores together with stylised-fact checks
-\citep{cont2001empirical}, and the paired-text policy is stated explicitly. We
-expect no benefit and report the outcome either way.
-
 %==============================================================================
-\footnotesize
-\setlength{\itemsep}{1pt}
+\section*{Supplementary material}
+Three appendices are provided as a companion document: the reconciled
+specification table listing every conflict resolved against the authors'
+earlier design and the test that prevents each recurring; the full indicator
+list with the conventions that cause hand-rolled implementations to drift; and
+the generative-augmentation protocol. None is required to follow the results.
+
 \begin{thebibliography}{99}
 \small
 

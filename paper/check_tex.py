@@ -120,18 +120,28 @@ report("no empty sections", empty)
 # 9. artifacts generated but never included. Two tables and two figures had been
 #    written to disk by the report script and referenced from nowhere in the manuscript,
 #    which is invisible in a compiled PDF: the result simply is not there to miss.
+# Only the results paper inputs generated tables; a supplement legitimately has
+# none, and flagging every artifact as missing there is noise, not a finding.
 report_script = Path(path).resolve().parent.parent / "experiments" / "03_make_paper.py"
-if report_script.exists():
+if report_script.exists() and re.search(r"\\resulttable\{", src):
     rep = report_script.read_text(encoding="utf-8")
     emitted_tables = set(re.findall(r"write_table\(\s*[\"']([A-Za-z0-9_]+)[\"']", rep))
     used_tables = set(re.findall(r"\\resulttable\{([A-Za-z0-9_]+)\}", src))
+    # A table may legitimately live in the companion document instead, so count that
+    # as included: what matters is that no generated table goes unpublished.
+    companion = Path(path).resolve().parent / "supplementary.tex"
+    if companion.exists():
+        comp = companion.read_text(encoding="utf-8")
+        used_tables |= set(re.findall(r"tables/([A-Za-z0-9_]+)\.tex", comp))
     report("every generated table is included", sorted(emitted_tables - used_tables))
 
     emitted_figs = set(re.findall(r'FIGURES / ["\']([A-Za-z0-9_]+)\.pdf["\']', rep))
     used_figs = set(re.findall(r"figures/([A-Za-z0-9_]+)\.pdf", src))
     report("every generated figure is included", sorted(emitted_figs - used_figs))
+elif not report_script.exists():
+    print("  skip  generated-artifact check: report script not alongside")
 else:
-    print("  skip  generated-artifact check: report script not found")
+    print("  skip  generated-artifact check: not the results paper")
 
 # 10. draft-mode state
 # Strip comments first: the preamble documents both switch settings in prose, and

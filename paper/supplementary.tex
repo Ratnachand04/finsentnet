@@ -1,0 +1,131 @@
+% Companion document to main.tex. Compile standalone.
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{enumitem}
+\geometry{margin=2.4cm}
+\newcommand{\num}[1]{#1}
+\newcommand{\Down}{\textsc{down}}
+\newcommand{\Neutral}{\textsc{neutral}}
+\newcommand{\Up}{\textsc{up}}
+\newcommand{\muhat}{\hat{\mu}}
+\newcommand{\sigmahat}{\hat{\sigma}}
+\title{\bfseries Supplementary material for\\
+Calibration Is the Binding Constraint on Position Sizing}
+\date{}
+\begin{document}
+\maketitle
+\appendix
+
+\section{Study panel by year}
+\label{app:panel}
+\input{tables/T1_main.tex}
+
+\section{Robustness by subperiod}
+\label{app:robust}
+Horizon and rebalance frequency are swept alongside the subperiods below and
+counted as declared trials against the Deflated Sharpe budget.
+\input{tables/T8_main.tex}
+
+\section{Trainable parameters by module}
+\label{app:params}
+Frozen FinBERT (110M) is an offline cache and never enters the training graph.
+The count is asserted against the implementation by \texttt{tests/test\_model.py}
+and against \texttt{configs/base.yaml} by the configuration validator. The
+evaluated configuration is the forced price-only state, in which the text encoder
+emits its learned null embedding, so the text-pathway rows are carried but never
+trained.
+\input{tables/T2_main.tex}
+
+\section{Reconciled Specification}
+\label{app:supersede}
+
+Table~\ref{tab:supersede} lists the specification conflicts resolved relative
+to the authors' earlier design. Several changed the \emph{meaning} of a
+reported quantity rather than merely its value, which is why they are recorded
+rather than silently corrected. Each frozen decision is enforced by a test that
+fails if the conflict is reintroduced.
+
+\begin{table}[t]
+\centering
+\caption{Resolved specification conflicts. The right-hand column names the
+mechanism that prevents recurrence.}
+\label{tab:supersede}
+\small
+\begin{tabular}{p{4.1cm}p{6.4cm}p{3.6cm}}
+\toprule
+\textbf{Item} & \textbf{Resolution} & \textbf{Enforced by}\\
+\midrule
+Label convention & $\Down=0$, $\Neutral=1$, $\Up=2$, frozen &
+  hand-computed fixture test\\
+Class weights & inverse frequency; the majority class receives the
+  \emph{smallest} weight & loss test\\
+Sizing & continuous $f=\kappa\muhat/\sigmahat^{2}$; barrier-odds Kelly removed &
+  growth-theory tests\\
+Confidence multiplier & removed; a calibrated probability already carries it &
+  sizing implementation\\
+Loss weights & one objective, Equation~(12) of the main paper; others are
+  ablations & configuration\\
+Early-stopping patience & one value throughout & spec/config equality test\\
+Feature count & $F=12$, one list & spec/config equality test\\
+Inference-time text path & identical to training; no lexicon-to-token bridge &
+  single code path\\
+Sortino denominator & $\sqrt{\E[\min(r-\mathrm{MAR},0)^{2}]}$ over \emph{all}
+  periods & hand-computed value test\\
+Execution lag & one session, applied by default & both-directions regression
+  test\\
+Post-hoc calibration & guarded selection with identity as a candidate &
+  selection tests\\
+Conformal score & randomised & coverage tests\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\section{Features and Indicators}
+\label{app:features}
+
+Twelve causal features spanning six economically distinct groups: returns
+($r_1$, $r_5$, $r_{21}$); momentum (12-1 momentum skipping the most recent
+month, and a five-day overnight-gap reversal); volatility (EWMA realised
+volatility, ATR normalised by price, Garman--Klass range volatility); trend
+(MACD histogram normalised by ATR); mean reversion (RSI, Bollinger \%B); and
+liquidity (log dollar volume). Each is winsorised at 1\% and ranked
+cross-sectionally within each date to $[-0.5,0.5]$, which removes the market
+factor, renders each feature stationary across regimes, and makes the model
+learn relative attractiveness --- the quantity a cross-sectional book actually
+trades.
+
+Two implementation notes. The reversal feature is defined as a sum of overnight
+gaps rather than as the negation of the five-day return, which would be
+perfectly collinear with it. And every indicator is verified to $10^{-6}$
+against a reference implementation; the conventions that cause hand-rolled
+indicators to drift --- SMA-seeded exponential averages, Wilder smoothing at
+$\alpha=1/n$ rather than $2/(n+1)$, and population rather than sample standard
+deviation in the Bollinger bands --- are pinned by closed-form tests.
+
+
+\section{Generative Augmentation}
+\label{app:gan}
+
+Retained as an ablation only. The generator emits OHLCV alone, with ordering
+constraints enforced in the output parameterisation, and the derived indicators
+are recomputed with the same causal code used on real data. Generating
+indicators jointly with prices, as is sometimes done, produces windows in which
+an indicator is inconsistent with the prices it is supposed to summarise ---
+physically impossible market states from which the encoder learns relationships
+that do not exist. Conditioning is on fitted hidden-Markov regime states rather
+than on a threshold rule, since a rule's thresholds are themselves fitted
+parameters that no trial budget counts. Synthetic quality is assessed by
+discriminative and predictive scores together with stylised-fact checks
+(Cont, 2001), and the paired-text policy is stated explicitly. We
+expect no benefit and report the outcome either way.
+
+%==============================================================================
+\footnotesize
+\setlength{\itemsep}{1pt}
+
+\end{document}
