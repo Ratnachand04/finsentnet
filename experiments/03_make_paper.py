@@ -100,11 +100,13 @@ def write_table(tid: str, df: pd.DataFrame, caption: str, prov: Provenance,
     footnote = (f"\\vspace{{2pt}}\\footnotesize {note}\n" if note else "")
     tex = (
         f"% {tid}  [{prov.footnote()}]\n"
-        f"\\begin{{table}}[t]\n\\centering\\small\n"
+        # table*, not table: every generated table here is wider than one column of a
+        # two-column page, and a tabular that overflows its column does so silently.
+        f"\\begin{{table*}}[t]\n\\centering\\small\n"
         f"\\caption{{{caption}}}\n\\label{{tab:{tid}}}\n"
         f"{body}\n"
         f"{footnote}"
-        f"\\end{{table}}\n"
+        f"\\end{{table*}}\n"
     )
     (TABLES / f"{tid}.tex").write_text(tex, encoding="utf-8")
     print(f"  wrote {tid}  ({len(df)} rows)")
@@ -617,12 +619,10 @@ def main() -> int:
         {"Ablation": "Decision layer: conformal gate on vs off",
          "Reported": "yes", "Reason": "reported in T5b across the full alpha grid"},
     ])
-    write_table("T7_main", t7,
-                "Ablation status. What was ablated, what was not, and why.", prov,
-                note=("An ablation of a model whose predictive signal is indistinguishable "
-                      "from zero measures the difference between two noise terms. We state "
-                      "that rather than tabulating it. The decision-layer ablations survive "
-                      "the null and are reported."))
+    # Reported as prose in the manuscript; the CSV stays as a data artifact.
+    TABLES.joinpath("T7_main.csv").write_text(t7.to_csv(index=False),
+                                              encoding="utf-8")
+    print("  wrote T7_main.csv (prose in the paper)")
 
     # ---------------------------------------------------------------- T8: robustness
     rows = []
@@ -651,9 +651,10 @@ def main() -> int:
                  "headlines, so there is no news-flow variable to regress on. The "
                  "diagnostic is retained in the released code and reported as unavailable "
                  "rather than substituted.")
-    write_table("T9_main", pd.DataFrame([{"Diagnostic": "gate vs news flow",
-                                          "Status": "not evaluable (no text corpus)"}]),
-                "Gate diagnostics.", prov, note=gate_note)
+    TABLES.joinpath("T9_main.csv").write_text(
+        "Diagnostic,Status\ngate vs news flow,not evaluable (no text corpus)\n",
+        encoding="utf-8")
+    print("  wrote T9_main.csv (prose in the paper)")
 
     # ---------------------------------------------------------------- figures
     FIGURES.mkdir(parents=True, exist_ok=True)
